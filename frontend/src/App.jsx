@@ -834,12 +834,11 @@ const App = () => {
                             <span className="text-[10px] text-slate-500 block leading-none font-bold uppercase tracking-wider">Mobile Number</span>
                             <div className="flex items-center justify-between mt-0.5">
                               <span className="text-slate-355 block">{selectedNode.mobileNumber || 'N/A'}</span>
-                              {(() => {
-                                const cleanNumber = selectedNode.mobileNumber ? selectedNode.mobileNumber.replace(/[^\d]/g, '') : '';
+                              {selectedNode.mobileNumber && (() => {
+                                const cleanNumber = selectedNode.mobileNumber.replace(/[^\d]/g, '');
+                                if (!cleanNumber) return null;
                                 const prefilledText = encodeURIComponent(`Hello${selectedNode.name ? ' ' + selectedNode.name : ''}, reaching out to you from Sangam Roots Family Tree!`);
-                                const waUrl = cleanNumber 
-                                  ? `https://wa.me/${cleanNumber}?text=${prefilledText}`
-                                  : `https://wa.me/?text=${prefilledText}`;
+                                const waUrl = `https://wa.me/${cleanNumber}?text=${prefilledText}`;
                                 
                                 return (
                                   <a
@@ -847,7 +846,7 @@ const App = () => {
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="flex items-center space-x-1 px-2.5 py-1 bg-emerald-950/40 hover:bg-emerald-900/40 border border-emerald-500/20 hover:border-emerald-500/40 text-[9.5px] text-emerald-400 font-extrabold rounded-lg hover:scale-102 transition-all active:scale-95 cursor-pointer ml-2"
-                                    title={cleanNumber ? "Chat on WhatsApp" : "Share via WhatsApp"}
+                                    title="Chat on WhatsApp"
                                   >
                                     <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
                                       <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.455L0 24zm6.59-4.846c1.6.95 3.488 1.459 5.407 1.46h.007c5.432 0 9.854-4.41 9.857-9.843.002-2.63-1.023-5.102-2.886-6.968C17.168 1.836 14.697.813 12.011.813c-5.437 0-9.859 4.41-9.862 9.843-.001 1.93.501 3.818 1.456 5.416l-.995 3.637 3.737-.98c1.61.877 3.415 1.341 5.25 1.343zm10.374-7.04c-.29-.145-1.713-.845-1.978-.942-.266-.097-.459-.145-.652.145-.193.29-.748.942-.917 1.135-.168.193-.337.217-.627.072-1.09-.546-1.819-1.02-2.541-2.262-.165-.284.165-.264.472-.876.085-.17.042-.317-.02-.462-.063-.146-.541-1.304-.741-1.787-.195-.47-.393-.404-.541-.412-.139-.007-.3-.008-.461-.008-.162 0-.427.06-.65.302-.224.24-.855.835-.855 2.036 0 1.2.875 2.36 1.0 2.528.123.167 1.723 2.63 4.174 3.687.583.25 1.038.4 1.393.513.585.186 1.118.16 1.539.097.47-.07 1.712-.7 1.953-1.376.24-.678.24-1.258.17-1.377-.073-.119-.265-.192-.556-.338z"/>
