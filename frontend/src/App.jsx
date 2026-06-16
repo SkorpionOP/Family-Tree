@@ -9,6 +9,7 @@ import RolesModal from './components/RolesModal';
 import Profile from './components/Profile';
 import SuperAdminDashboard from './components/SuperAdminDashboard';
 import MailVerification from './components/MailVerification';
+import LandingPage from './components/LandingPage';
 import { 
   TreeDeciduous, 
   GitBranch, 
@@ -528,10 +529,12 @@ const App = () => {
   // loading splash screen
   if (authLoading) {
     return (
-      <div className="h-screen w-screen bg-slate-950 flex flex-col items-center justify-center text-slate-100 font-sans">
-        <TreeDeciduous size={48} className="text-emerald-500 animate-bounce mb-4" />
-        <h2 className="text-sm font-semibold tracking-widest text-slate-400 uppercase">Sangam Roots</h2>
-        <span className="text-xs text-slate-600 mt-1.5">Find your roots along with us</span>
+      <div className="h-screen w-screen bg-surface-0 flex flex-col items-center justify-center text-slate-100 font-sans">
+        <div className="bg-emerald-950/40 border border-emerald-500/20 p-4 rounded-2xl text-emerald-400 mb-5 shadow-glow-md animate-bounce">
+          <TreeDeciduous size={36} />
+        </div>
+        <h2 className="text-sm font-bold tracking-widest text-slate-300 uppercase">Sangam Roots</h2>
+        <span className="text-[11px] text-slate-500 mt-1.5">Loading your heritage...</span>
       </div>
     );
   }
@@ -544,216 +547,33 @@ const App = () => {
   // Auth login/register view
   if (!user) {
     return (
-      <div className="min-h-screen w-screen bg-[#020617] flex items-center justify-center font-sans relative overflow-hidden px-4">
-        
-        {/* Decorative Background Gradients */}
-        <div className="absolute top-1/4 left-1/4 w-[350px] h-[350px] bg-emerald-500/10 rounded-full blur-[100px] pointer-events-none" />
-        <div className="absolute bottom-1/4 right-1/4 w-[350px] h-[350px] bg-teal-500/10 rounded-full blur-[100px] pointer-events-none" />
-        
-        <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl z-10">
-          
-          {/* Logo panel */}
-          <div className="bg-slate-950/60 px-8 py-8 border-b border-slate-850 text-center flex flex-col items-center">
-            <div className="bg-emerald-950/40 border border-emerald-500/30 p-3 rounded-2xl text-emerald-400 mb-3.5 shadow-lg shadow-emerald-500/5">
-              <TreeDeciduous size={32} />
-            </div>
-            <h1 className="text-2xl font-extrabold tracking-wide bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent uppercase">
-              Sangam Roots
-            </h1>
-            <p className="text-[10px] text-slate-500 font-bold tracking-widest uppercase mt-0.5 animate-pulse">
-              {showForgotPassword ? 'Reset your password' : 'Find your roots along with us'}
-            </p>
-          </div>
-
-          {showForgotPassword ? (
-            /* Forgot Password Form */
-            <form onSubmit={handleForgotPasswordSubmit} className="p-8 space-y-5">
-              <div className="space-y-1">
-                <h2 className="text-sm font-semibold text-slate-200">Forgot Password</h2>
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  Enter your email address below and we'll send you a link to reset your password.
-                </p>
-              </div>
-
-              {authError && (
-                <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-xs px-4 py-3 rounded-xl">
-                  {authError}
-                </div>
-              )}
-
-              {resetSent && (
-                <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs px-4 py-3 rounded-xl">
-                  Password reset email sent! Check your inbox.
-                </div>
-              )}
-
-              {/* Email input */}
-              <div className="space-y-1">
-                <label className="text-[10px] text-slate-500 uppercase font-bold tracking-wider block">Email Address</label>
-                <div className="relative">
-                  <Mail size={14} className="absolute left-3 top-3.5 text-slate-500" />
-                  <input
-                    type="email"
-                    value={authEmail}
-                    onChange={(e) => setAuthEmail(e.target.value)}
-                    placeholder="name@domain.com"
-                    required
-                    className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-200 rounded-xl pl-9 pr-3 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 placeholder-slate-650"
-                  />
-                </div>
-              </div>
-
-              {/* Submit */}
-              <button
-                type="submit"
-                disabled={authProcess}
-                className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs py-3 rounded-xl transition-all duration-300 hover:shadow-lg hover:shadow-emerald-600/10 active:scale-98 disabled:opacity-50 mt-2 cursor-pointer"
-              >
-                {authProcess ? 'Processing...' : 'Send Reset Email'}
-              </button>
-
-              <div className="text-center pt-2">
-                <button
-                  type="button"
-                  onClick={() => { setShowForgotPassword(false); setResetSent(false); setAuthError(''); }}
-                  className="text-xs text-emerald-400 hover:text-emerald-300 font-semibold transition-colors cursor-pointer"
-                  style={{ background: 'none', border: 'none' }}
-                >
-                  Back to Sign In
-                </button>
-              </div>
-            </form>
-          ) : (
-            /* Standard Login / Register Form */
-            <form onSubmit={handleAuthSubmit} className="p-8 space-y-5">
-              {/* Tabs */}
-              <div className="flex border-b border-slate-800 mb-2">
-                <button
-                  type="button"
-                  onClick={() => { setIsLoginTab(true); setAuthError(''); }}
-                  className={`flex-1 pb-3 text-sm font-semibold border-b-2 transition-colors ${
-                    isLoginTab ? 'border-emerald-500 text-slate-200' : 'border-transparent text-slate-500 hover:text-slate-350'
-                  }`}
-                >
-                  Sign In
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setIsLoginTab(false); setAuthError(''); }}
-                  className={`flex-1 pb-3 text-sm font-semibold border-b-2 transition-colors ${
-                    !isLoginTab ? 'border-emerald-500 text-slate-200' : 'border-transparent text-slate-500 hover:text-slate-350'
-                  }`}
-                >
-                  Register
-                </button>
-              </div>
-
-              {authError && (
-                <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-xs px-4 py-3 rounded-xl">
-                  {authError}
-                </div>
-              )}
-
-              {/* Email input */}
-              <div className="space-y-1">
-                <label className="text-[10px] text-slate-500 uppercase font-bold tracking-wider block">Email Address</label>
-                <div className="relative">
-                  <Mail size={14} className="absolute left-3 top-3.5 text-slate-500" />
-                  <input
-                    type="email"
-                    value={authEmail}
-                    onChange={(e) => setAuthEmail(e.target.value)}
-                    placeholder="name@domain.com"
-                    required
-                    className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-200 rounded-xl pl-9 pr-3 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 placeholder-slate-650"
-                  />
-                </div>
-              </div>
-
-              {/* Password input */}
-              <div className="space-y-1">
-                <div className="flex justify-between items-center">
-                  <label className="text-[10px] text-slate-500 uppercase font-bold tracking-wider block">Password</label>
-                  {isLoginTab && (
-                    <button
-                      type="button"
-                      onClick={() => { setShowForgotPassword(true); setAuthError(''); }}
-                      className="text-[10px] text-emerald-500 hover:text-emerald-450 font-bold tracking-wider uppercase transition-colors cursor-pointer"
-                      style={{ background: 'none', border: 'none' }}
-                    >
-                      Forgot Password?
-                    </button>
-                  )}
-                </div>
-                <div className="relative">
-                  <Lock size={14} className="absolute left-3 top-3.5 text-slate-500" />
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    value={authPassword}
-                    onChange={(e) => setAuthPassword(e.target.value)}
-                    placeholder="••••••••"
-                    required
-                    className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-200 rounded-xl pl-9 pr-10 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 placeholder-slate-650"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-3 text-slate-500 hover:text-slate-350 cursor-pointer"
-                    style={{ background: 'none', border: 'none' }}
-                  >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
-              </div>
-
-               {/* Submit */}
-              <button
-                type="submit"
-                disabled={authProcess}
-                className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs py-3 rounded-xl transition-all duration-300 hover:shadow-lg hover:shadow-emerald-600/10 active:scale-98 disabled:opacity-50 mt-2 cursor-pointer"
-              >
-                {authProcess ? 'Processing...' : isLoginTab ? 'Sign In to Account' : 'Create New Account'}
-              </button>
-
-              {/* Google Sign-In */}
-              <div className="flex flex-col items-center mt-4 pt-4 border-t border-slate-800/80">
-                <span className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-3">Or continue with</span>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    setAuthProcess(true);
-                    setAuthError('');
-                    try {
-                      await loginWithGoogle();
-                    } catch (err) {
-                      setAuthError(err.message || 'Google Sign-In failed.');
-                    } finally {
-                      setAuthProcess(false);
-                    }
-                  }}
-                  disabled={authProcess}
-                  className="w-full bg-slate-950 border border-slate-800 hover:bg-slate-850 text-slate-200 font-bold text-xs py-3.5 rounded-xl transition-all duration-200 hover:shadow-lg flex items-center justify-center space-x-2.5 active:scale-98 disabled:opacity-50 cursor-pointer"
-                >
-                  <svg className="w-4 h-4" viewBox="0 0 24 24">
-                    <path
-                      fill="#EA4335"
-                      d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.114-5.136 4.114A5.94 5.94 0 0 1 8 12.57c0-3.3 2.682-5.97 5.99-5.97 1.487 0 2.846.542 3.896 1.436l3.12-3.12C19.043 3.102 16.711 2 13.99 2 8.167 2 3.42 6.736 3.42 12.57S8.167 23.14 13.99 23.14c5.78 0 10.155-4.06 10.155-10.3 0-.61-.05-1.2-.15-1.78l-11.755-.775Z"
-                    />
-                  </svg>
-                  <span>Continue with Google</span>
-                </button>
-              </div>
-            </form>
-          )}
-
-        </div>
-      </div>
+      <LandingPage
+        isLoginTab={isLoginTab}
+        setIsLoginTab={setIsLoginTab}
+        authEmail={authEmail}
+        setAuthEmail={setAuthEmail}
+        authPassword={authPassword}
+        setAuthPassword={setAuthPassword}
+        authError={authError}
+        setAuthError={setAuthError}
+        authProcess={authProcess}
+        showPassword={showPassword}
+        setShowPassword={setShowPassword}
+        showForgotPassword={showForgotPassword}
+        setShowForgotPassword={setShowForgotPassword}
+        resetSent={resetSent}
+        setResetSent={setResetSent}
+        handleAuthSubmit={handleAuthSubmit}
+        handleForgotPasswordSubmit={handleForgotPasswordSubmit}
+        loginWithGoogle={loginWithGoogle}
+        setAuthProcess={setAuthProcess}
+      />
     );
   }
 
   // Authenticated View
   return (
-    <div className="h-screen w-screen bg-[#020617] flex flex-col font-sans overflow-hidden">
+    <div className="h-screen w-screen bg-surface-0 flex flex-col font-sans overflow-hidden">
       
       {/* 1. TOP NAVBAR */}
       <Navbar
@@ -781,7 +601,7 @@ const App = () => {
         {/* 2. SIDEBAR (Collapsible drawer on mobile, side panel on desktop) */}
         <div 
           className={`
-            fixed md:relative top-[73px] md:top-0 left-0 z-20 md:z-auto h-[calc(100vh-73px)] md:h-auto 
+            fixed md:relative top-[60px] md:top-0 left-0 z-20 md:z-auto h-[calc(100vh-60px)] md:h-auto 
             transition-transform duration-300 ease-in-out md:translate-x-0 flex flex-col flex-shrink-0
             ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
           `}
@@ -826,7 +646,7 @@ const App = () => {
         {mobileSidebarOpen && (
           <div 
             onClick={() => setMobileSidebarOpen(false)}
-            className="md:hidden fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-10 top-[73px] cursor-pointer"
+            className="md:hidden fixed inset-0 bg-surface-0/60 backdrop-blur-sm z-10 top-[60px] cursor-pointer"
           />
         )}
 
@@ -844,12 +664,12 @@ const App = () => {
                 const canAdd = userRole === 'Admin' || userRole === 'Sub-Admin';
                 const canDelete = userRole === 'Admin';
                 return (
-                  <div className="absolute top-[88px] right-4 z-10 w-[calc(100vw-32px)] sm:w-80 bg-slate-900/85 border border-slate-800 backdrop-blur-md rounded-2xl p-4 shadow-2xl animate-in fade-in slide-in-from-right-4 duration-200 text-slate-200">
-                    <div className="flex items-center justify-between pb-3 border-b border-slate-800/80 mb-3">
-                      <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Member Profile</h3>
+                  <div className="absolute top-[88px] right-4 z-10 w-[calc(100vw-32px)] sm:w-80 glass-heavy rounded-2xl p-4 shadow-2xl animate-slide-in-right text-slate-200">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-700/30 mb-3">
+                      <h3 className="section-label">Member Profile</h3>
                       <button
                         onClick={() => setSelectedNode(null)}
-                        className="text-slate-500 hover:text-slate-300 p-1 bg-slate-950/40 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                        className="text-slate-500 hover:text-slate-300 p-1 bg-surface-1/40 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
                       >
                         <X size={14} />
                       </button>
@@ -1288,21 +1108,21 @@ const App = () => {
 
               {/* Empty state when tree has no nodes */}
               {rawNodes.length === 0 && !loading && (
-                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-950/80 px-6 text-center">
-                  <div className="bg-emerald-950/40 border border-emerald-500/20 p-4 rounded-3xl text-emerald-400 mb-4 animate-bounce">
-                    <TreeDeciduous size={36} />
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-surface-0/80 backdrop-blur-sm px-6 text-center">
+                  <div className="bg-emerald-950/40 border border-emerald-500/20 p-5 rounded-2xl text-emerald-400 mb-5 shadow-glow-md animate-float">
+                    <TreeDeciduous size={32} />
                   </div>
                   <h2 className="text-lg font-bold text-slate-100">Empty Family Tree</h2>
-                  <p className="text-xs text-slate-400 max-w-sm mt-1.5 leading-normal">
-                    This family tree does not have any members yet. As an administrator, you can initialize this tree by inserting the first root member!
+                  <p className="text-xs text-slate-400 max-w-sm mt-2 leading-relaxed">
+                    This family tree doesn't have any members yet. Initialize it by adding the first root member.
                   </p>
                   <button
                     onClick={() => {
                       setModalMode('add_child');
-                      setModalTargetId(null); // no parent since empty
+                      setModalTargetId(null);
                       setModalOpen(true);
                     }}
-                    className="mt-5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4.5 py-2.5 rounded-xl transition-all duration-300 hover:shadow-lg hover:shadow-emerald-600/10 active:scale-95 flex items-center space-x-1.5 cursor-pointer"
+                    className="btn-primary mt-6 text-xs px-5 py-2.5 flex items-center space-x-1.5 shadow-glow-sm"
                   >
                     <Plus size={14} />
                     <span>Create Root Member Node</span>
@@ -1344,11 +1164,11 @@ const App = () => {
             </>
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 p-6">
-              <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl max-w-md text-center shadow-2xl flex flex-col items-center">
-                <GitBranch size={40} className="text-slate-600 mb-3" />
+              <div className="card p-8 max-w-md text-center flex flex-col items-center">
+                <GitBranch size={36} className="text-slate-600 mb-4" />
                 <h2 className="text-base font-bold text-slate-200">No Family Tree Selected</h2>
-                <p className="text-xs text-slate-450 mt-2 leading-relaxed">
-                  Please select an existing family tree from the header selector or click "New Tree" to build a fresh lineages path from scratch.
+                <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+                  Select an existing family tree from the header or click "New Tree" to start building.
                 </p>
               </div>
             </div>

@@ -248,18 +248,18 @@ const Canvas = ({
         target: edge.targetNodeId,
         relationshipType: edge.relationshipType,
         type: isSpouse ? 'straight' : 'smoothstep',
-        animated: false, // no animation needed for straight spouse lines
+        animated: false,
         className: isSpouse ? 'spouse' : 'parent_child',
         data: { relationshipType: edge.relationshipType },
         style: isSpouse 
-          ? { stroke: '#f43f5e', strokeWidth: 3, strokeDasharray: '6 4' } 
-          : { stroke: '#10b981', strokeWidth: 2 },
+          ? { stroke: '#fb7185', strokeWidth: 2, strokeDasharray: '8 5', opacity: 0.7 } 
+          : { stroke: '#34d399', strokeWidth: 1.5, opacity: 0.6 },
         // Add arrow markers for parent_child relationships
         markerEnd: !isSpouse ? {
           type: MarkerType.ArrowClosed,
-          width: 15,
-          height: 15,
-          color: '#10b981',
+          width: 14,
+          height: 14,
+          color: '#34d399',
         } : undefined,
       };
     });
@@ -357,7 +357,12 @@ const Canvas = ({
   ]);
 
   return (
-    <div className="w-full h-full relative bg-slate-950">
+    <div className="w-full h-full relative bg-surface-0">
+      {/* Subtle radial glow behind the tree */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-emerald-500/[0.02] rounded-full blur-[100px]" />
+      </div>
+      
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -369,9 +374,18 @@ const Canvas = ({
         fitViewOptions={{ padding: 0.2, maxZoom: 1.2 }}
         minZoom={0.1}
         maxZoom={2}
+        proOptions={{ hideAttribution: true }}
       >
-        <Controls showInteractive={false} className="border border-slate-800 bg-slate-900" />
-        <Background color="#1e293b" gap={16} size={1} />
+        <Controls 
+          showInteractive={false} 
+          position="bottom-right"
+        />
+        <Background 
+          color="rgba(51, 65, 85, 0.15)" 
+          gap={32} 
+          size={1} 
+          variant="dots"
+        />
       </ReactFlow>
     </div>
   );
