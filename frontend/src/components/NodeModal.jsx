@@ -108,7 +108,14 @@ const NodeModal = ({
   const targetNode = nodes && targetNodeId ? nodes.find((n) => n._id === targetNodeId) : null;
 
   const hasSpouse = mode === 'edit_profile' && nodeData && edges && edges.some(
-    e => e.relationshipType === 'spouse' && (e.source === nodeData._id || e.target === nodeData._id)
+    e => e.relationshipType === 'spouse' && (
+      e.source === nodeData._id || 
+      e.target === nodeData._id ||
+      e.sourceNodeId === nodeData._id ||
+      e.targetNodeId === nodeData._id ||
+      (e.sourceNodeId && e.sourceNodeId._id === nodeData._id) ||
+      (e.targetNodeId && e.targetNodeId._id === nodeData._id)
+    )
   );
 
   // Sync edit data and reset states

@@ -52,7 +52,8 @@ const UserSchema = new mongoose.Schema({
     gotram: { type: String, default: '' },
     mobileNumber: { type: String, default: '' },
     profilePictureUrl: { type: String, default: '' },
-    socialLinks: [{ type: String }]
+    socialLinks: [{ type: String }],
+    marriageDate: { type: Date, default: null }
   },
   syncSettings: {
     name: { type: Boolean, default: true },
@@ -62,7 +63,8 @@ const UserSchema = new mongoose.Schema({
     mobileNumber: { type: Boolean, default: true },
     email: { type: Boolean, default: true },
     profilePictureUrl: { type: Boolean, default: true },
-    socialLinks: { type: Boolean, default: true }
+    socialLinks: { type: Boolean, default: true },
+    marriageDate: { type: Boolean, default: true }
   },
   activeTrees: [{
     type: mongoose.Schema.Types.ObjectId,

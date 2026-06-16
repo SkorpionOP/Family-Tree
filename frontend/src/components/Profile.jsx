@@ -16,7 +16,8 @@ const Profile = () => {
     gotram: '',
     mobileNumber: '',
     profilePictureUrl: '',
-    socialLinks: ['']
+    socialLinks: [''],
+    marriageDate: ''
   });
 
   const [syncSettings, setSyncSettings] = useState({
@@ -27,7 +28,8 @@ const Profile = () => {
     mobileNumber: true,
     email: true,
     profilePictureUrl: true,
-    socialLinks: true
+    socialLinks: true,
+    marriageDate: true
   });
 
   // Email states
@@ -49,7 +51,8 @@ const Profile = () => {
         gotram: user.profile?.gotram || '',
         mobileNumber: user.profile?.mobileNumber || '',
         profilePictureUrl: user.profile?.profilePictureUrl || '',
-        socialLinks: user.profile?.socialLinks?.length > 0 ? [...user.profile.socialLinks] : ['']
+        socialLinks: user.profile?.socialLinks?.length > 0 ? [...user.profile.socialLinks] : [''],
+        marriageDate: user.profile?.marriageDate ? new Date(user.profile.marriageDate).toISOString().split('T')[0] : ''
       });
       setEmailInput(user.email || '');
       setIsEditingEmail(false);
@@ -62,7 +65,8 @@ const Profile = () => {
           mobileNumber: user.syncSettings.mobileNumber !== false,
           email: user.syncSettings.email !== false,
           profilePictureUrl: user.syncSettings.profilePictureUrl !== false,
-          socialLinks: user.syncSettings.socialLinks !== false
+          socialLinks: user.syncSettings.socialLinks !== false,
+          marriageDate: user.syncSettings.marriageDate !== false
         });
       }
     }
@@ -437,6 +441,22 @@ const Profile = () => {
                 </div>
               </div>
 
+              {/* Marriage Date */}
+              <div className="space-y-1.5 md:col-span-2">
+                <label className="text-xs font-semibold text-slate-400">Marriage Date</label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-500"><Calendar size={15} /></span>
+                  <input
+                    type="date"
+                    name="marriageDate"
+                    value={formData.marriageDate}
+                    onChange={handleChange}
+                    max={new Date().toISOString().split('T')[0]}
+                    className="input-field pl-10"
+                  />
+                </div>
+              </div>
+
               {/* Profile Picture Upload & URL */}
               <div className="space-y-3 md:col-span-2 border-t border-slate-700/20 pt-5 mt-2">
                 <label className="text-xs font-semibold text-slate-400 block">Profile Picture</label>
@@ -587,6 +607,7 @@ const Profile = () => {
               {[
                 { field: 'name', label: 'Sync Name' },
                 { field: 'dob', label: 'Sync Date of Birth' },
+                { field: 'marriageDate', label: 'Sync Marriage Date' },
                 { field: 'bloodGroup', label: 'Sync Blood Group' },
                 { field: 'gotram', label: 'Sync Gotram' },
                 { field: 'mobileNumber', label: 'Sync Mobile Number' },

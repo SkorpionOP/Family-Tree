@@ -1546,7 +1546,27 @@ const updateNode = async (req, res) => {
         if (profilePictureUrl !== undefined) linkedNode.profilePictureUrl = profilePictureUrl;
         if (isDeceased !== undefined) linkedNode.isDeceased = isDeceased;
         if (dateOfDeath !== undefined) linkedNode.dateOfDeath = dateOfDeath ? new Date(dateOfDeath) : null;
-        if (marriageDate !== undefined) linkedNode.marriageDate = marriageDate ? new Date(marriageDate) : null;
+        if (marriageDate !== undefined) {
+          const parsedMarriageDate = marriageDate ? new Date(marriageDate) : null;
+          linkedNode.marriageDate = parsedMarriageDate;
+
+          // Sync marriage date to spouse of the linked node in its tree
+          const spouseEdge = await Edge.findOne({
+            treeId: linkedNode.treeId,
+            relationshipType: 'spouse',
+            $or: [{ sourceNodeId: linkedNode._id }, { targetNodeId: linkedNode._id }]
+          });
+          if (spouseEdge) {
+            const spouseId = spouseEdge.sourceNodeId.toString() === linkedNode._id.toString() 
+              ? spouseEdge.targetNodeId 
+              : spouseEdge.sourceNodeId;
+            const spouse = await Node.findOne({ _id: spouseId, treeId: linkedNode.treeId });
+            if (spouse) {
+              spouse.marriageDate = parsedMarriageDate;
+              await spouse.save();
+            }
+          }
+        }
         await linkedNode.save();
       }
     }
