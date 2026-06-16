@@ -173,12 +173,9 @@ const CustomNode = ({ data }) => {
           <span>Check Family Tree</span>
         </button>
       ) : (
-        <div className="flex items-center justify-between text-[8px] text-slate-400 px-1 border-t border-slate-800/40 pt-1 mt-1">
-          <span className="flex items-center gap-0.5">
-            <span className="text-slate-600">G:</span> <span className="font-semibold text-slate-300 truncate max-w-[65px]">{gotram || 'N/A'}</span>
-          </span>
-          <span className="flex items-center gap-0.5">
-            <span className="text-slate-600">B:</span> <span className="font-semibold text-slate-300">{bloodGroup || 'N/A'}</span>
+        <div className="flex items-center justify-center text-[8px] text-slate-400 px-1 border-t border-slate-800/40 pt-1 mt-1">
+          <span className="flex items-center gap-1">
+            <span className="text-slate-500">Blood Group:</span> <span className="font-semibold text-slate-300">{bloodGroup || 'N/A'}</span>
           </span>
         </div>
       )}

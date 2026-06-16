@@ -727,108 +727,128 @@ const App = () => {
                 const canEdit = userRole === 'Admin' || userRole === 'Sub-Admin' || (userRole === 'Standard' && isCurrentUser);
                 const canAdd = userRole === 'Admin' || userRole === 'Sub-Admin';
                 const canDelete = userRole === 'Admin';
+                const isMale = selectedNode.gender === 1;
+                const initials = selectedNode.name ? selectedNode.name.split(' ').map(p => p[0]).join('').substring(0, 2).toUpperCase() : '?';
+
+                let containerBorder = 'border-slate-800/80 bg-gradient-to-br from-slate-900/95 to-slate-950/95 shadow-slate-950/50';
+                let accentColor = 'from-emerald-500 to-teal-500';
+                if (selectedNode.isDeceased) {
+                  containerBorder = 'border-slate-850 bg-gradient-to-br from-slate-950/95 to-slate-900/90';
+                  accentColor = 'from-slate-600 to-slate-700';
+                } else if (isMale) {
+                  containerBorder = 'border-blue-500/20 bg-gradient-to-br from-slate-950 via-slate-950 to-blue-950/15 hover:border-blue-500/30';
+                  accentColor = 'from-blue-500 to-indigo-500';
+                } else {
+                  containerBorder = 'border-pink-500/20 bg-gradient-to-br from-slate-950 via-slate-950 to-pink-950/15 hover:border-pink-500/30';
+                  accentColor = 'from-pink-500 to-rose-500';
+                }
+
                 return (
-                  <div className="absolute top-[88px] right-4 z-10 w-[calc(100vw-32px)] sm:w-80 glass-heavy rounded-2xl p-4 shadow-2xl animate-slide-in-right text-slate-200">
-                    <div className="flex items-center justify-between pb-3 border-b border-slate-700/30 mb-3">
-                      <h3 className="section-label">Member Profile</h3>
+                  <div className={`absolute top-[88px] right-4 z-10 w-[calc(100vw-32px)] sm:w-80 border rounded-3xl p-5 shadow-2xl animate-slide-in-right text-slate-200 backdrop-blur-xl transition-all duration-300 ${containerBorder}`}>
+                    
+                    {/* Top Accent Gradient Bar */}
+                    <div className={`absolute top-0 left-0 right-0 h-[3px] rounded-t-3xl bg-gradient-to-r ${accentColor} opacity-90`} />
+
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-800/40 mb-4">
+                      <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Member Profile</span>
                       <button
                         onClick={() => setSelectedNode(null)}
-                        className="text-slate-500 hover:text-slate-300 p-1 bg-surface-1/40 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                        className="text-slate-500 hover:text-slate-200 p-1.5 bg-slate-950 hover:bg-slate-900 border border-slate-800 rounded-xl transition-all active:scale-95 cursor-pointer"
                       >
-                        <X size={14} />
+                        <X size={13} />
                       </button>
                     </div>
 
-                    <div className="space-y-3.5">
+                    <div className="space-y-4">
                       {/* Avatar & Header */}
-                      <div className="flex items-center space-x-3">
+                      <div className="flex items-center space-x-3.5">
                         {selectedNode.profilePictureUrl ? (
                           <img
                             src={selectedNode.profilePictureUrl}
                             alt={selectedNode.name}
-                            className={`w-12 h-12 rounded-full object-cover border cursor-pointer hover:scale-105 active:scale-95 transition-transform duration-200 ${selectedNode.isDeceased ? 'grayscale border-slate-650' : 'border-slate-800'}`}
+                            className={`w-12 h-12 rounded-full object-cover border-2 cursor-pointer hover:scale-105 active:scale-95 transition-transform duration-200 shadow-md ${selectedNode.isDeceased ? 'grayscale border-slate-700' : (isMale ? 'border-blue-500/30' : 'border-pink-500/30')}`}
                             onClick={() => setPreviewImageUrl(selectedNode.profilePictureUrl)}
                           />
                         ) : (
-                          <div className={`w-12 h-12 rounded-full flex items-center justify-center border ${
-                            selectedNode.isDeceased ? 'bg-slate-950 border-slate-650 text-slate-400 grayscale' :
-                            (selectedNode.gender === 1 ? 'bg-blue-950/40 border-blue-500/20 text-blue-400' : 'bg-pink-950/40 border-pink-500/20 text-pink-400')
+                          <div className={`w-12 h-12 rounded-full flex items-center justify-center border border-dashed text-xs font-bold tracking-wider shadow-md ${
+                            selectedNode.isDeceased ? 'bg-slate-905 border-slate-800 text-slate-500 grayscale' :
+                            (isMale ? 'bg-blue-950/60 border-blue-500/20 text-blue-400' : 'bg-pink-950/60 border-pink-500/20 text-pink-400')
                           }`}>
-                            <User size={22} />
+                            {initials}
                           </div>
                         )}
                         <div className="min-w-0 flex-1">
-                          <h4 className="text-sm font-bold text-slate-100 leading-tight truncate flex items-center">
-                            <span className="truncate">{selectedNode.name}</span>
+                          <h4 className="text-sm font-bold text-slate-100 leading-snug break-words flex flex-wrap items-center gap-1.5">
+                            <span>{selectedNode.name}</span>
                             {selectedNode.isDeceased && (
-                              <span className="ml-1.5 px-1 py-0.2 text-[8px] font-extrabold bg-slate-700 text-slate-300 rounded border border-slate-600 flex-shrink-0">
-                                Deceased
+                              <span className="px-1.5 py-0.5 text-[7px] font-extrabold bg-slate-800 text-slate-400 rounded-md border border-slate-700 flex-shrink-0 uppercase tracking-wide">
+                                Dec.
                               </span>
                             )}
                           </h4>
                           <p className="text-[11px] text-slate-400 mt-0.5">
-                            {selectedNode.gender === 1 ? 'Male' : 'Female'} • Gen Level {selectedNode.generationLevel}
+                            {isMale ? 'Male' : 'Female'} • Gen Level {selectedNode.generationLevel}
                           </p>
                         </div>
                       </div>
 
                       {/* Profile fields */}
-                      <div className="space-y-2.5 text-xs pt-1 border-t border-slate-800/40">
-                        <div className="flex items-start space-x-2">
+                      <div className="space-y-3 pt-3.5 border-t border-slate-800/40 text-xs">
+                        <div className="flex items-start space-x-2.5">
                           <Calendar size={13} className="text-slate-500 mt-0.5" />
                           <div>
-                            <span className="text-[10px] text-slate-500 block leading-none font-semibold">Date of Birth</span>
-                            <span className="text-slate-300 block mt-0.5">{getDobFormatted(selectedNode.dob)} ({getAge(selectedNode.dob, selectedNode.dateOfDeath, selectedNode.isDeceased)})</span>
+                            <span className="text-[10px] text-slate-500 block leading-none font-bold uppercase tracking-wider">Date of Birth</span>
+                            <span className="text-slate-350 block mt-0.5">{getDobFormatted(selectedNode.dob)} ({getAge(selectedNode.dob, selectedNode.dateOfDeath, selectedNode.isDeceased)})</span>
                           </div>
                         </div>
 
                         {selectedNode.isDeceased && (
-                          <div className="flex items-start space-x-2 animate-in fade-in slide-in-from-top-1 duration-150">
+                          <div className="flex items-start space-x-2.5 animate-in fade-in slide-in-from-top-1 duration-150">
                             <Calendar size={13} className="text-rose-500 mt-0.5" />
                             <div>
-                              <span className="text-[10px] text-rose-450 block leading-none font-semibold">Date of Death</span>
+                              <span className="text-[10px] text-rose-400 block leading-none font-bold uppercase tracking-wider">Date of Death</span>
                               <span className="text-slate-350 block mt-0.5">{getDobFormatted(selectedNode.dateOfDeath)}</span>
                             </div>
                           </div>
                         )}
 
-                        <div className="flex items-start space-x-2">
+                        <div className="flex items-start space-x-2.5">
                           <Compass size={13} className="text-slate-500 mt-0.5" />
                           <div>
-                            <span className="text-[10px] text-slate-500 block leading-none font-semibold">Gotram</span>
-                            <span className="text-slate-300 block mt-0.5">{selectedNode.gotram || 'N/A'}</span>
+                            <span className="text-[10px] text-slate-500 block leading-none font-bold uppercase tracking-wider">Gotram</span>
+                            <span className="text-slate-355 block mt-0.5">{selectedNode.gotram || 'N/A'}</span>
                           </div>
                         </div>
 
-                        <div className="flex items-start space-x-2">
+                        <div className="flex items-start space-x-2.5">
                           <Heart size={13} className="text-slate-500 mt-0.5" />
                           <div>
-                            <span className="text-[10px] text-slate-500 block leading-none font-semibold">Blood Group</span>
-                            <span className="text-slate-300 block mt-0.5">{selectedNode.bloodGroup || 'N/A'}</span>
+                            <span className="text-[10px] text-slate-500 block leading-none font-bold uppercase tracking-wider">Blood Group</span>
+                            <span className="text-slate-355 block mt-0.5">{selectedNode.bloodGroup || 'N/A'}</span>
                           </div>
                         </div>
 
-                        <div className="flex items-start space-x-2">
+                        <div className="flex items-start space-x-2.5">
                           <Smartphone size={13} className="text-slate-500 mt-0.5" />
                           <div>
-                            <span className="text-[10px] text-slate-500 block leading-none font-semibold">Mobile Number</span>
-                            <span className="text-slate-300 block mt-0.5">{selectedNode.mobileNumber || 'N/A'}</span>
+                            <span className="text-[10px] text-slate-500 block leading-none font-bold uppercase tracking-wider">Mobile Number</span>
+                            <span className="text-slate-355 block mt-0.5">{selectedNode.mobileNumber || 'N/A'}</span>
                           </div>
                         </div>
 
-                        <div className="flex items-start space-x-2">
+                        <div className="flex items-start space-x-2.5">
                           <Mail size={13} className="text-slate-500 mt-0.5" />
                           <div>
-                            <span className="text-[10px] text-slate-500 block leading-none font-semibold">Email Address</span>
-                            <span className="text-slate-300 block mt-0.5">{selectedNode.email || 'N/A'}</span>
+                            <span className="text-[10px] text-slate-500 block leading-none font-bold uppercase tracking-wider">Email Address</span>
+                            <span className="text-slate-355 block mt-0.5">{selectedNode.email || 'N/A'}</span>
                           </div>
                         </div>
 
                         {selectedNode.socialLinks && selectedNode.socialLinks.length > 0 && (
-                          <div className="flex items-start space-x-2">
+                          <div className="flex items-start space-x-2.5">
                             <Link2 size={13} className="text-slate-500 mt-0.5" />
                             <div className="min-w-0 flex-1">
-                              <span className="text-[10px] text-slate-500 block leading-none font-semibold mb-1">Social Profiles</span>
+                              <span className="text-[10px] text-slate-500 block leading-none font-bold uppercase tracking-wider mb-1">Social Profiles</span>
                               <div className="space-y-0.5">
                                 {selectedNode.socialLinks.map((link, idx) => (
                                   <a
@@ -846,9 +866,9 @@ const App = () => {
                           </div>
                         )}
 
-                        <div className="bg-slate-950/60 p-2 rounded-xl border border-slate-800 flex justify-between items-center text-[10px] font-mono mt-1">
-                          <span className="text-slate-500 font-bold uppercase">Kinship Parity</span>
-                          <span className={`px-2 py-0.5 rounded font-extrabold ${selectedNode.parity === 1 ? 'bg-indigo-950 text-indigo-400 border border-indigo-500/10' : 'bg-amber-950 text-amber-400 border border-amber-500/10'}`}>
+                        <div className="bg-slate-950/80 p-2.5 rounded-xl border border-slate-850 flex justify-between items-center text-[10px] font-mono mt-2 shadow-inner">
+                          <span className="text-slate-400 font-bold uppercase tracking-wider">Kinship Parity</span>
+                          <span className={`px-2 py-0.5 rounded-md font-extrabold tracking-wider ${selectedNode.parity === 1 ? 'bg-indigo-950 text-indigo-400 border border-indigo-500/20' : 'bg-amber-950 text-amber-400 border border-amber-500/20'}`}>
                             STATE {selectedNode.parity}
                           </span>
                         </div>
