@@ -38,7 +38,7 @@ async function verifyFirebaseIdToken(token) {
     throw new Error('Invalid token structure');
   }
 
-  const projectId = 'family-tree-d32c9';
+  const projectId = process.env.FIREBASE_PROJECT_ID || 'family-tree-d32c9';
 
   try {
     const certs = await getGoogleCerts();

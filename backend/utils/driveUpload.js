@@ -3,16 +3,57 @@ const { Readable } = require('stream');
 const path = require('path');
 const fs = require('fs');
 
+// Resolve key file path using GOOGLE_APPLICATION_CREDENTIALS or fallback
 const localKeyPath = path.join(__dirname, '../service-account.json');
 const renderKeyPath = '/etc/secrets/service-account.json';
-const keyFilePath = fs.existsSync(localKeyPath)
-  ? localKeyPath
-  : (fs.existsSync(renderKeyPath) ? renderKeyPath : localKeyPath);
+let keyFilePath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+
+if (keyFilePath) {
+  if (!path.isAbsolute(keyFilePath)) {
+    // Resolve relative to backend/ root directory
+    keyFilePath = path.resolve(keyFilePath);
+  }
+} else {
+  keyFilePath = fs.existsSync(localKeyPath)
+    ? localKeyPath
+    : (fs.existsSync(renderKeyPath) ? renderKeyPath : localKeyPath);
+}
 
 let auth = null;
 let driveAvailable = false;
 
-if (fs.existsSync(keyFilePath)) {
+// 1. Check if service account details are provided as environment variables
+const hasEnvCredentials = 
+  process.env.FIREBASE_PRIVATE_KEY && 
+  process.env.FIREBASE_CLIENT_EMAIL && 
+  process.env.FIREBASE_PROJECT_ID;
+
+if (hasEnvCredentials) {
+  try {
+    const privateKey = process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n');
+    auth = new google.auth.GoogleAuth({
+      credentials: {
+        type: process.env.FIREBASE_TYPE || 'service_account',
+        project_id: process.env.FIREBASE_PROJECT_ID,
+        private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
+        private_key: privateKey,
+        client_email: process.env.FIREBASE_CLIENT_EMAIL,
+        client_id: process.env.FIREBASE_CLIENT_ID,
+        auth_uri: process.env.FIREBASE_AUTH_URI,
+        token_uri: process.env.FIREBASE_TOKEN_URI,
+        auth_provider_x509_cert_url: process.env.FIREBASE_AUTH_PROVIDER_X509_CERT_URL,
+        client_x509_cert_url: process.env.FIREBASE_CLIENT_X509_CERT_URL,
+        universe_domain: process.env.FIREBASE_UNIVERSE_DOMAIN
+      },
+      scopes: ['https://www.googleapis.com/auth/drive'],
+    });
+    driveAvailable = true;
+    console.log('Google Drive API configuration loaded successfully from environment variables');
+  } catch (error) {
+    console.error('Error loading service account credentials from environment variables:', error.message);
+  }
+} else if (fs.existsSync(keyFilePath)) {
+  // 2. Fall back to loading from file path
   try {
     auth = new google.auth.GoogleAuth({
       keyFile: keyFilePath,
@@ -25,11 +66,12 @@ if (fs.existsSync(keyFilePath)) {
   }
 } else {
   console.warn(
-    'WARNING: service account key file not found.\n' +
+    'WARNING: Google Drive service account key or environment variables not found.\n' +
     'Profile pictures will be converted to base64 Data URLs instead of being uploaded to Google Drive.\n' +
-    'To enable Google Drive uploads, place your key at backend/service-account.json or as a Render Secret File at /etc/secrets/service-account.json'
+    'To enable Google Drive uploads, configure individual service account environment variables or set GOOGLE_APPLICATION_CREDENTIALS.'
   );
 }
+
 
 /**
  * Uploads a file buffer to Google Drive (or returns base64 Data URL if credentials aren't set)
