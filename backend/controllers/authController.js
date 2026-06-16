@@ -188,6 +188,25 @@ const updateProfile = async (req, res) => {
     }
 
     if (profile) {
+      if (profile.name !== undefined && profile.name) {
+        const nameRegex = /^[A-Za-z\s]+$/;
+        if (!nameRegex.test(profile.name)) {
+          return res.status(400).json({ message: 'Validation failed: Name can only contain letters and spaces' });
+        }
+      }
+
+      if (profile.mobileNumber !== undefined && profile.mobileNumber) {
+        let formattedMobile = profile.mobileNumber;
+        if (formattedMobile.length === 10 && !formattedMobile.startsWith('+')) {
+          formattedMobile = '+91' + formattedMobile;
+        }
+        const mobileRegex = /^\+91[6-9]\d{9}$/;
+        if (!mobileRegex.test(formattedMobile)) {
+          return res.status(400).json({ message: 'Validation failed: Mobile number must start with +91 followed by a valid 10-digit number (cannot start with 0-5)' });
+        }
+        profile.mobileNumber = formattedMobile;
+      }
+
       if (profile.dob) {
         const selectedDob = new Date(profile.dob);
         if (selectedDob > new Date()) {

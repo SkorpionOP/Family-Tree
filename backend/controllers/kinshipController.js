@@ -361,6 +361,26 @@ const createNode = async (req, res) => {
       return res.status(403).json({ message: 'Only Admins or Sub-Admins can create nodes' });
     }
 
+    // Validation: Name can only contain letters and spaces
+    if (name) {
+      const nameRegex = /^[A-Za-z\s]+$/;
+      if (!nameRegex.test(name)) {
+        return res.status(400).json({ message: 'Validation failed: Name can only contain letters and spaces' });
+      }
+    }
+
+    // Validation: Mobile number must start with +91 and have exactly 10 digits that do not start with 0-5
+    let finalMobileNumber = mobileNumber || '';
+    if (finalMobileNumber) {
+      if (finalMobileNumber.length === 10 && !finalMobileNumber.startsWith('+')) {
+        finalMobileNumber = '+91' + finalMobileNumber;
+      }
+      const mobileRegex = /^\+91[6-9]\d{9}$/;
+      if (!mobileRegex.test(finalMobileNumber)) {
+        return res.status(400).json({ message: 'Validation failed: Mobile number must start with +91 followed by a valid 10-digit number (cannot start with 0-5)' });
+      }
+    }
+
     // Validation: DOB and Date of Death cannot be in the future
     if (dob && new Date(dob) > new Date()) {
       return res.status(400).json({ message: 'Validation failed: Date of birth cannot be in the future' });
@@ -480,7 +500,7 @@ const createNode = async (req, res) => {
       dob: dob ? new Date(dob) : null,
       bloodGroup: bloodGroup || '',
       gotram: childGotram,
-      mobileNumber: mobileNumber || '',
+      mobileNumber: finalMobileNumber || '',
       email: email || '',
       socialLinks: socialLinks || [],
       gender,
@@ -620,6 +640,26 @@ const createSpouseNode = async (req, res) => {
     const role = await getUserRoleInTree(tree, req.user.id);
     if (role !== 'Admin' && role !== 'Sub-Admin') {
       return res.status(403).json({ message: 'Only Admins or Sub-Admins can add spouses' });
+    }
+
+    // Validation: Name can only contain letters and spaces
+    if (name) {
+      const nameRegex = /^[A-Za-z\s]+$/;
+      if (!nameRegex.test(name)) {
+        return res.status(400).json({ message: 'Validation failed: Name can only contain letters and spaces' });
+      }
+    }
+
+    // Validation: Mobile number must start with +91 and have exactly 10 digits that do not start with 0-5
+    let finalMobileNumber = mobileNumber || '';
+    if (finalMobileNumber) {
+      if (finalMobileNumber.length === 10 && !finalMobileNumber.startsWith('+')) {
+        finalMobileNumber = '+91' + finalMobileNumber;
+      }
+      const mobileRegex = /^\+91[6-9]\d{9}$/;
+      if (!mobileRegex.test(finalMobileNumber)) {
+        return res.status(400).json({ message: 'Validation failed: Mobile number must start with +91 followed by a valid 10-digit number (cannot start with 0-5)' });
+      }
     }
 
     // Validation: DOB and Date of Death cannot be in the future
@@ -823,7 +863,7 @@ const createSpouseNode = async (req, res) => {
         dob: dob ? new Date(dob) : null,
         bloodGroup: bloodGroup || '',
         gotram: spouseGotram,
-        mobileNumber: mobileNumber || '',
+        mobileNumber: finalMobileNumber || '',
         email: email || '',
         socialLinks: socialLinks || [],
         gender,
@@ -1290,6 +1330,26 @@ const updateNode = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to edit this node profile' });
     }
 
+    // Validation: Name can only contain letters and spaces
+    if (name !== undefined && name) {
+      const nameRegex = /^[A-Za-z\s]+$/;
+      if (!nameRegex.test(name)) {
+        return res.status(400).json({ message: 'Validation failed: Name can only contain letters and spaces' });
+      }
+    }
+
+    // Validation: Mobile number must start with +91 and have exactly 10 digits that do not start with 0-5
+    let finalMobileNumber = mobileNumber;
+    if (finalMobileNumber !== undefined && finalMobileNumber) {
+      if (finalMobileNumber.length === 10 && !finalMobileNumber.startsWith('+')) {
+        finalMobileNumber = '+91' + finalMobileNumber;
+      }
+      const mobileRegex = /^\+91[6-9]\d{9}$/;
+      if (!mobileRegex.test(finalMobileNumber)) {
+        return res.status(400).json({ message: 'Validation failed: Mobile number must start with +91 followed by a valid 10-digit number (cannot start with 0-5)' });
+      }
+    }
+
     // Store previous fields of node for revert capability
     const previousFields = {
       name: node.name,
@@ -1427,7 +1487,7 @@ const updateNode = async (req, res) => {
     if (dob !== undefined) node.dob = dob ? new Date(dob) : null;
     if (bloodGroup !== undefined) node.bloodGroup = bloodGroup;
     if (gotram !== undefined) node.gotram = gotram;
-    if (mobileNumber !== undefined) node.mobileNumber = mobileNumber;
+    if (mobileNumber !== undefined) node.mobileNumber = finalMobileNumber || '';
     if (email !== undefined) node.email = email;
     if (socialLinks !== undefined) node.socialLinks = socialLinks;
     if (profilePictureUrl !== undefined) node.profilePictureUrl = profilePictureUrl;
@@ -1480,7 +1540,7 @@ const updateNode = async (req, res) => {
         if (dob !== undefined) linkedNode.dob = dob ? new Date(dob) : null;
         if (bloodGroup !== undefined) linkedNode.bloodGroup = bloodGroup;
         if (gotram !== undefined) linkedNode.gotram = gotram;
-        if (mobileNumber !== undefined) linkedNode.mobileNumber = mobileNumber;
+        if (mobileNumber !== undefined) linkedNode.mobileNumber = finalMobileNumber || '';
         if (email !== undefined) linkedNode.email = email;
         if (socialLinks !== undefined) linkedNode.socialLinks = socialLinks;
         if (profilePictureUrl !== undefined) linkedNode.profilePictureUrl = profilePictureUrl;

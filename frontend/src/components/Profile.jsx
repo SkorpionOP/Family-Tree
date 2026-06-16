@@ -70,9 +70,32 @@ const Profile = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    let finalValue = value;
+
+    if (name === 'name') {
+      // Allow only letters and spaces
+      finalValue = value.replace(/[^A-Za-z\s]/g, '');
+    } else if (name === 'mobileNumber') {
+      // Keep only digits and '+'
+      let val = value.replace(/[^\d+]/g, '');
+      if (val && !val.startsWith('+')) {
+        if (val.startsWith('91') && val.length > 2) {
+          val = '+' + val;
+        } else if (/^[6-9]/.test(val)) {
+          val = '+91' + val;
+        }
+      }
+      if (val.startsWith('+91')) {
+        val = val.slice(0, 13);
+      } else {
+        val = val.slice(0, 10);
+      }
+      finalValue = val;
+    }
+
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: finalValue
     }));
   };
 
@@ -176,6 +199,30 @@ const Profile = () => {
     // Clean social links
     const cleanedSocialLinks = formData.socialLinks.filter(link => link.trim() !== '');
 
+    // Validate Name (only letters and spaces)
+    if (formData.name) {
+      const nameRegex = /^[A-Za-z\s]+$/;
+      if (!nameRegex.test(formData.name)) {
+        setMessage({ type: 'error', text: 'Name can only contain letters and spaces.' });
+        setLoading(false);
+        return;
+      }
+    }
+
+    // Validate and format Mobile Number
+    let finalMobile = formData.mobileNumber ? formData.mobileNumber.trim() : '';
+    if (finalMobile) {
+      if (finalMobile.length === 10 && !finalMobile.startsWith('+')) {
+        finalMobile = '+91' + finalMobile;
+      }
+      const mobileRegex = /^\+91[6-9]\d{9}$/;
+      if (!mobileRegex.test(finalMobile)) {
+        setMessage({ type: 'error', text: 'Mobile number must start with +91 followed by a valid 10-digit number (cannot start with 0-5).' });
+        setLoading(false);
+        return;
+      }
+    }
+
     // Validate DOB is not in the future
     if (formData.dob) {
       const selectedDob = new Date(formData.dob);
@@ -190,6 +237,7 @@ const Profile = () => {
       await api.auth.updateProfile(
         {
           ...formData,
+          mobileNumber: finalMobile,
           socialLinks: cleanedSocialLinks
         },
         syncSettings
