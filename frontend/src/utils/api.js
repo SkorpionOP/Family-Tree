@@ -215,6 +215,13 @@ export const api = {
       });
       return handleResponse(res);
     },
+    listMembers: async (treeId) => {
+      const res = await apiFetch(`/trees/${treeId}/members`, {
+        method: 'GET',
+        headers: getHeaders(),
+      });
+      return handleResponse(res);
+    },
   },
 
   // Kinship graph & validation endpoints
@@ -277,6 +284,14 @@ export const api = {
       const res = await apiFetch(`/kinship/${treeId}/nodes/${nodeId}`, {
         method: 'DELETE',
         headers: getHeaders(),
+      });
+      return handleResponse(res);
+    },
+    deleteEdge: async (treeId, sourceNodeId, targetNodeId, relationshipType) => {
+      const res = await apiFetch(`/kinship/${treeId}/edges`, {
+        method: 'DELETE',
+        headers: getHeaders(),
+        body: JSON.stringify({ sourceNodeId, targetNodeId, relationshipType }),
       });
       return handleResponse(res);
     },

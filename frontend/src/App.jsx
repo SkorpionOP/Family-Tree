@@ -303,6 +303,21 @@ const App = () => {
     fetchGraph();
   };
 
+  // Remove relationship handler
+  const handleRemoveRelationship = async (sourceNodeId, targetNodeId, relationshipType) => {
+    if (!activeTreeId) return;
+    if (!window.confirm(`Are you sure you want to remove this ${relationshipType.replace('_', ' ')} relationship?`)) {
+      return;
+    }
+    try {
+      await api.kinship.deleteEdge(activeTreeId, sourceNodeId, targetNodeId, relationshipType);
+      alert('Relationship removed successfully!');
+      fetchGraph();
+    } catch (err) {
+      alert(err.message || 'Failed to remove relationship');
+    }
+  };
+
   // Node submissions handler
   const handleNodeSubmit = async (data) => {
     if (!activeTreeId) return;
@@ -952,6 +967,68 @@ const App = () => {
                           <span className={`px-2 py-0.5 rounded font-extrabold ${selectedNode.parity === 1 ? 'bg-indigo-950 text-indigo-400 border border-indigo-500/10' : 'bg-amber-950 text-amber-400 border border-amber-500/10'}`}>
                             STATE {selectedNode.parity}
                           </span>
+                        </div>
+
+                        {/* Relationships List */}
+                        <div className="mt-3.5 pt-3 border-t border-slate-800/80 space-y-2">
+                          <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider block">Relationships</span>
+                          {(() => {
+                            const spouses = rawEdges
+                              .filter(e => e.relationshipType === 'spouse' && (e.sourceNodeId === selectedNode._id || e.targetNodeId === selectedNode._id))
+                              .map(e => {
+                                const partnerId = e.sourceNodeId === selectedNode._id ? e.targetNodeId : e.sourceNodeId;
+                                const partnerNode = rawNodes.find(n => n._id === partnerId);
+                                return { edge: e, node: partnerNode, type: 'spouse' };
+                              })
+                              .filter(item => item.node);
+
+                            const parents = rawEdges
+                              .filter(e => e.relationshipType === 'parent_child' && e.targetNodeId === selectedNode._id)
+                              .map(e => {
+                                const parentNode = rawNodes.find(n => n._id === e.sourceNodeId);
+                                return { edge: e, node: parentNode, type: 'parent' };
+                              })
+                              .filter(item => item.node);
+
+                            const children = rawEdges
+                              .filter(e => e.relationshipType === 'parent_child' && e.sourceNodeId === selectedNode._id)
+                              .map(e => {
+                                const childNode = rawNodes.find(n => n._id === e.targetNodeId);
+                                return { edge: e, node: childNode, type: 'child' };
+                              })
+                              .filter(item => item.node);
+
+                            const allRelations = [...spouses, ...parents, ...children];
+
+                            if (allRelations.length === 0) {
+                              return <p className="text-[10px] text-slate-500 italic">No direct relationships established.</p>;
+                            }
+
+                            return (
+                              <div className="space-y-1.5 max-h-[140px] overflow-y-auto custom-scrollbar pr-1">
+                                {allRelations.map(({ edge, node: relNode, type }) => (
+                                  <div key={edge._id + '-' + type} className="flex items-center justify-between bg-slate-950/40 border border-slate-850/60 rounded-lg px-2.5 py-1.5 text-xs text-slate-350">
+                                    <div className="flex flex-col min-w-0">
+                                      <span className="font-bold truncate text-[11px] text-slate-200">{relNode.name}</span>
+                                      <span className="text-[9px] text-slate-500 capitalize leading-none mt-0.5">
+                                        {type === 'parent' ? 'parent' : type === 'child' ? 'child' : 'spouse'}
+                                      </span>
+                                    </div>
+                                    {canAdd && (
+                                      <button
+                                        type="button"
+                                        title={`Remove ${type} relationship`}
+                                        onClick={() => handleRemoveRelationship(edge.sourceNodeId, edge.targetNodeId, edge.relationshipType)}
+                                        className="text-slate-500 hover:text-red-400 p-1 hover:bg-red-950/20 rounded-md transition-colors cursor-pointer"
+                                      >
+                                        <Trash2 size={11} />
+                                      </button>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
 

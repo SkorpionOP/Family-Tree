@@ -1920,6 +1920,76 @@ const getNodeTree = async (req, res) => {
   }
 };
 
+// @desc    Delete a relationship (edge) between two nodes
+// @route   DELETE /api/kinship/:treeId/edges
+// @access  Private (Admin or Sub-Admin)
+const deleteEdge = async (req, res) => {
+  const { treeId } = req.params;
+  const sourceNodeId = req.body.sourceNodeId || req.query.sourceNodeId;
+  const targetNodeId = req.body.targetNodeId || req.query.targetNodeId;
+  const relationshipType = req.body.relationshipType || req.query.relationshipType;
+
+  if (!sourceNodeId || !targetNodeId || !relationshipType) {
+    return res.status(400).json({ message: 'sourceNodeId, targetNodeId, and relationshipType are required' });
+  }
+
+  try {
+    const tree = await Tree.findById(treeId);
+    if (!tree) {
+      return res.status(404).json({ message: 'Tree not found' });
+    }
+
+    const role = await getUserRoleInTree(tree, req.user.id);
+    if (role !== 'Admin' && role !== 'Sub-Admin') {
+      return res.status(403).json({ message: 'Only Tree Admins or Sub-Admins can delete relationships' });
+    }
+
+    // Find the edge
+    let query = {
+      treeId,
+      relationshipType
+    };
+
+    if (relationshipType === 'spouse') {
+      // Spouse can be represented as source -> target or target -> source
+      query.$or = [
+        { sourceNodeId, targetNodeId },
+        { sourceNodeId: targetNodeId, targetNodeId: sourceNodeId }
+      ];
+    } else {
+      query.sourceNodeId = sourceNodeId;
+      query.targetNodeId = targetNodeId;
+    }
+
+    const edge = await Edge.findOne(query);
+    if (!edge) {
+      return res.status(404).json({ message: 'Relationship not found' });
+    }
+
+    await Edge.deleteOne({ _id: edge._id });
+
+    // Fetch node names for activity logging
+    const sourceNode = await Node.findById(sourceNodeId);
+    const targetNode = await Node.findById(targetNodeId);
+    const sourceName = sourceNode ? sourceNode.name : 'Unknown';
+    const targetName = targetNode ? targetNode.name : 'Unknown';
+
+    // Log the activity
+    await ActivityLog.create({
+      treeId,
+      userId: req.user.id,
+      userName: req.user.name || req.user.email,
+      action: 'DELETE_RELATIONSHIP',
+      description: `${req.user.name || req.user.email} removed relationship "${relationshipType}" between "${sourceName}" and "${targetName}"`,
+      revertData: {}
+    });
+
+    res.status(200).json({ message: 'Relationship removed successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // @desc    Get all activity logs for a tree
 // @route   GET /api/kinship/:treeId/logs
 // @access  Private
@@ -2082,6 +2152,7 @@ module.exports = {
   uploadProfilePicture,
   getNodeTree,
   getTreeLogs,
-  revertTreeLog
+  revertTreeLog,
+  deleteEdge
 };
 

@@ -387,6 +387,93 @@ const rejectJoinRequest = async (req, res) => {
   }
 };
 
+// @desc    Get all members of a tree (admins, sub-admins, standard users)
+// @route   GET /api/trees/:id/members
+// @access  Private
+const getTreeMembers = async (req, res) => {
+  try {
+    const tree = await Tree.findById(req.params.id)
+      .populate('admins', 'email profile')
+      .populate('subAdmins', 'email profile')
+      .populate('createdBy', 'email profile');
+
+    if (!tree) {
+      return res.status(404).json({ message: 'Tree not found' });
+    }
+
+    const role = await getUserRoleInTree(tree, req.user.id);
+    if (!role) {
+      return res.status(403).json({ message: 'Not authorized to access this tree' });
+    }
+
+    // Find all nodes in this tree that have a linkedUserId
+    const linkedNodes = await Node.find({ treeId: tree._id, linkedUserId: { $ne: null } })
+      .populate('linkedUserId', 'email profile');
+
+    const members = [];
+
+    // Add Creator
+    if (tree.createdBy) {
+      members.push({
+        userId: tree.createdBy._id,
+        email: tree.createdBy.email,
+        role: 'Admin',
+        isCreator: true,
+        nodeId: null,
+        nodeName: null
+      });
+    }
+
+    // Add Admins
+    const creatorIdStr = tree.createdBy ? tree.createdBy._id.toString() : '';
+    if (tree.admins && tree.admins.length > 0) {
+      tree.admins.forEach(admin => {
+        if (admin._id.toString() === creatorIdStr) return;
+        members.push({
+          userId: admin._id,
+          email: admin.email,
+          role: 'Admin',
+          isCreator: false,
+          nodeId: null,
+          nodeName: null
+        });
+      });
+    }
+
+    // Add Sub-Admins
+    if (tree.subAdmins && tree.subAdmins.length > 0) {
+      tree.subAdmins.forEach(subAdmin => {
+        members.push({
+          userId: subAdmin._id,
+          email: subAdmin.email,
+          role: 'Sub-Admin',
+          isCreator: false,
+          nodeId: null,
+          nodeName: null
+        });
+      });
+    }
+
+    // Add Standard members linked to nodes
+    linkedNodes.forEach(node => {
+      if (node.linkedUserId) {
+        members.push({
+          userId: node.linkedUserId._id,
+          email: node.linkedUserId.email,
+          role: 'Standard',
+          isCreator: false,
+          nodeId: node._id,
+          nodeName: node.name
+        });
+      }
+    });
+
+    res.status(200).json(members);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   createTree,
   getTrees,
@@ -397,5 +484,6 @@ module.exports = {
   requestToJoinTree,
   getJoinRequests,
   approveJoinRequest,
-  rejectJoinRequest
+  rejectJoinRequest,
+  getTreeMembers
 };

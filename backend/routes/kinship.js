@@ -13,7 +13,8 @@ const {
   uploadProfilePicture,
   getNodeTree,
   getTreeLogs,
-  revertTreeLog
+  revertTreeLog,
+  deleteEdge
 } = require('../controllers/kinshipController');
 const { protect } = require('../middleware/auth');
 
@@ -31,6 +32,7 @@ router.post('/:treeId/nodes', createNode);
 router.post('/:treeId/nodes/spouse', createSpouseNode);
 router.post('/:treeId/edges/marriage', createMarriageEdge);
 router.post('/:treeId/edges/parent-child', createParentChildEdge);
+router.delete('/:treeId/edges', deleteEdge);
 router.put('/:treeId/nodes/:nodeId', updateNode);
 router.delete('/:treeId/nodes/:nodeId', deleteNode);
 router.get('/:treeId/relation', classifyKinshipRelation);

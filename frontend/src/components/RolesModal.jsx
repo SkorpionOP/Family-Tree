@@ -9,7 +9,7 @@ const RolesModal = ({
   treeId,
   onSubmit,
 }) => {
-  const [activeTab, setActiveTab] = useState('invite'); // 'invite' | 'requests'
+  const [activeTab, setActiveTab] = useState('invite'); // 'invite' | 'requests' | 'members'
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('Sub-Admin'); // default to Sub-Admin
   const [nodeId, setNodeId] = useState('');
@@ -21,6 +21,13 @@ const RolesModal = ({
   const [joinRequests, setJoinRequests] = useState([]);
   const [loadingRequests, setLoadingRequests] = useState(false);
   const [selectedNodeIds, setSelectedNodeIds] = useState({}); // requestId -> nodeId
+
+  // Manage Members states
+  const [members, setMembers] = useState([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+  const [editingMember, setEditingMember] = useState(null);
+  const [editRole, setEditRole] = useState('');
+  const [editNodeId, setEditNodeId] = useState('');
 
   const fetchJoinRequests = async () => {
     if (!treeId) return;
@@ -35,6 +42,19 @@ const RolesModal = ({
     }
   };
 
+  const fetchMembers = async () => {
+    if (!treeId) return;
+    setLoadingMembers(true);
+    try {
+      const data = await api.trees.listMembers(treeId);
+      setMembers(data);
+    } catch (err) {
+      console.error('Failed to load members:', err);
+    } finally {
+      setLoadingMembers(false);
+    }
+  };
+
   useEffect(() => {
     if (isOpen) {
       setEmail('');
@@ -43,14 +63,20 @@ const RolesModal = ({
       setError('');
       setSuccess('');
       setSelectedNodeIds({});
-      // If modal is open, always fetch requests in background
+      setEditingMember(null);
+      // Fetch both requests and members in background
       fetchJoinRequests();
+      fetchMembers();
     }
   }, [isOpen, treeId]);
 
   useEffect(() => {
-    if (isOpen && activeTab === 'requests') {
-      fetchJoinRequests();
+    if (isOpen) {
+      if (activeTab === 'requests') {
+        fetchJoinRequests();
+      } else if (activeTab === 'members') {
+        fetchMembers();
+      }
     }
   }, [activeTab]);
 
@@ -106,6 +132,37 @@ const RolesModal = ({
     }
   };
 
+  const handleEditClick = (member) => {
+    if (member.isCreator) {
+      alert('Creator role cannot be modified.');
+      return;
+    }
+    setEditingMember(member);
+    setEditRole(member.role);
+    setEditNodeId(member.nodeId || '');
+  };
+
+  const handleUpdateMember = async (e, memberEmail) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    setSuccess('');
+    try {
+      if (editRole === 'Standard' && !editNodeId) {
+        throw new Error('Standard users must be linked to a specific node');
+      }
+      await onSubmit(memberEmail, editRole, editRole === 'Standard' ? editNodeId : null);
+      setSuccess(`Updated permissions for ${memberEmail}`);
+      setEditingMember(null);
+      fetchMembers();
+    } catch (err) {
+      console.error(err);
+      setError(err.message || 'Failed to update member');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 backdrop-blur-sm px-4">
       <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
@@ -138,7 +195,7 @@ const RolesModal = ({
           <button
             type="button"
             onClick={() => setActiveTab('requests')}
-            className={`pb-2.5 text-xs font-bold border-b-2 transition-all flex items-center ${
+            className={`pb-2.5 text-xs font-bold border-b-2 mr-6 transition-all flex items-center ${
               activeTab === 'requests' ? 'border-emerald-500 text-slate-100' : 'border-transparent text-slate-500 hover:text-slate-300'
             }`}
           >
@@ -148,6 +205,15 @@ const RolesModal = ({
                 {joinRequests.length}
               </span>
             )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('members')}
+            className={`pb-2.5 text-xs font-bold border-b-2 transition-all ${
+              activeTab === 'members' ? 'border-emerald-500 text-slate-100' : 'border-transparent text-slate-500 hover:text-slate-300'
+            }`}
+          >
+            Manage Members
           </button>
         </div>
 
@@ -304,6 +370,154 @@ const RolesModal = ({
                     </div>
                   </div>
                 ))
+              )}
+            </div>
+
+            <div className="pt-4 border-t border-slate-850 flex justify-end">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 border border-slate-800 hover:border-slate-700 text-slate-350 hover:text-slate-200 text-xs font-semibold rounded-xl transition-all duration-300 active:scale-95 cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Tab 3: Manage Members */}
+        {activeTab === 'members' && (
+          <div className="p-6 space-y-4">
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-xs px-4 py-2.5 rounded-xl flex items-center space-x-2">
+                <AlertCircle size={14} className="shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            {success && (
+              <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs px-4 py-2.5 rounded-xl flex items-center space-x-2">
+                <Check size={14} className="shrink-0" />
+                <span>{success}</span>
+              </div>
+            )}
+
+            <div className="max-h-[300px] overflow-y-auto custom-scrollbar pr-1 space-y-3">
+              {loadingMembers ? (
+                <div className="text-center py-8 text-xs text-slate-500 animate-pulse">
+                  Loading members...
+                </div>
+              ) : members.length === 0 ? (
+                <div className="text-center py-8 text-xs text-slate-500 italic">
+                  No tree members found.
+                </div>
+              ) : (
+                members.map((member) => {
+                  const isEditing = editingMember && editingMember.userId === member.userId;
+                  return (
+                    <div key={member.userId || member.email} className="bg-slate-950/40 border border-slate-850/60 p-3.5 rounded-2xl flex flex-col space-y-2.5">
+                      <div className="flex items-center justify-between min-w-0">
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-xs font-bold text-slate-200 truncate" title={member.email}>
+                            {member.email}
+                          </span>
+                          <span className="text-[9px] text-slate-500 leading-none mt-1">
+                            {member.isCreator ? (
+                              <span className="text-amber-500/80 font-semibold">Creator • Owner</span>
+                            ) : member.role === 'Standard' ? (
+                              <span>Linked Node: <strong className="text-slate-350">{member.nodeName || 'None'}</strong></span>
+                            ) : (
+                              <span>Admin Access</span>
+                            )}
+                          </span>
+                        </div>
+                        <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold border ${
+                          member.role === 'Admin'
+                            ? 'bg-red-950/45 text-red-400 border-red-500/10'
+                            : member.role === 'Sub-Admin'
+                            ? 'bg-blue-950/45 text-blue-400 border-blue-500/10'
+                            : 'bg-emerald-950/45 text-emerald-400 border-emerald-500/10'
+                        }`}>
+                          {member.role}
+                        </span>
+                      </div>
+
+                      {isEditing ? (
+                        <form onSubmit={(e) => handleUpdateMember(e, member.email)} className="border-t border-slate-850/80 pt-3.5 space-y-3">
+                          {/* Edit Role */}
+                          <div className="space-y-1">
+                            <label className="text-[9px] text-slate-500 uppercase font-bold tracking-wider block">Access Role</label>
+                            <div className="grid grid-cols-3 gap-2">
+                              {['Admin', 'Sub-Admin', 'Standard'].map((r) => (
+                                <button
+                                  key={r}
+                                  type="button"
+                                  onClick={() => setEditRole(r)}
+                                  className={`py-1.5 rounded-lg text-[10px] font-semibold border transition-all ${
+                                    editRole === r
+                                      ? 'bg-emerald-950/40 text-emerald-400 border-emerald-500/50'
+                                      : 'bg-slate-950 text-slate-400 border-slate-800 hover:border-slate-700'
+                                  }`}
+                                >
+                                  {r}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Edit Node ID for Standard */}
+                          {editRole === 'Standard' && (
+                            <div className="space-y-1">
+                              <label className="text-[9px] text-slate-500 uppercase font-bold tracking-wider block">Reassign Tree Node</label>
+                              <select
+                                value={editNodeId}
+                                onChange={(e) => setEditNodeId(e.target.value)}
+                                required
+                                className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-350 rounded-xl px-2.5 py-2 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 cursor-pointer"
+                              >
+                                <option value="">Select Node to Link</option>
+                                {nodes.map((node) => (
+                                  <option key={node._id} value={node._id}>
+                                    {node.name} (Gen: {node.generationLevel})
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+
+                          <div className="flex space-x-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => setEditingMember(null)}
+                              className="flex-1 py-1.5 border border-slate-850 hover:border-slate-750 text-slate-400 text-xs font-semibold rounded-xl transition-all cursor-pointer active:scale-95"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="submit"
+                              disabled={loading}
+                              className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl transition-all cursor-pointer active:scale-95"
+                            >
+                              Save
+                            </button>
+                          </div>
+                        </form>
+                      ) : (
+                        !member.isCreator && (
+                          <div className="flex justify-end pt-1">
+                            <button
+                              type="button"
+                              onClick={() => handleEditClick(member)}
+                              className="text-[10px] font-semibold text-emerald-400 hover:text-emerald-300 bg-slate-950 border border-slate-850 px-3 py-1 rounded-xl transition-all hover:bg-slate-900 active:scale-95 cursor-pointer"
+                            >
+                              Reassign / Edit
+                            </button>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  );
+                })
               )}
             </div>
 

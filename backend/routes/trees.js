@@ -9,7 +9,8 @@ const {
   requestToJoinTree,
   getJoinRequests,
   approveJoinRequest,
-  rejectJoinRequest
+  rejectJoinRequest,
+  getTreeMembers
 } = require('../controllers/treeController');
 const { protect } = require('../middleware/auth');
 
@@ -26,6 +27,7 @@ router.route('/:id')
   .delete(deleteTree);
 
 router.post('/:id/roles', manageUserRole);
+router.get('/:id/members', getTreeMembers);
 
 router.get('/:id/join-requests', getJoinRequests);
 router.post('/:id/join-requests/:requestId/approve', approveJoinRequest);
