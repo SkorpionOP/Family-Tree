@@ -1,0 +1,380 @@
+import React, { useMemo, useEffect } from 'react';
+import ReactFlow, {
+  Controls,
+  Background,
+  useNodesState,
+  useEdgesState,
+  MarkerType,
+} from 'reactflow';
+import dagre from 'dagre';
+import CustomNode from './CustomNode';
+import 'reactflow/dist/style.css';
+
+// Register custom node types
+const nodeTypes = {
+  kinshipNode: CustomNode,
+};
+
+// Dagre layout helper function
+const getLayoutedElements = (nodes, edges, direction = 'TB') => {
+  const dagreGraph = new dagre.graphlib.Graph();
+  dagreGraph.setDefaultEdgeLabel(() => ({}));
+  
+  // Set layout options to guarantee exactly half a node's length (~100px) of space between node borders
+  // TB = Top to Bottom (horizontal generations), LR = Left to Right (vertical generations)
+  const isHorizontal = direction === 'LR';
+  dagreGraph.setGraph({
+    rankdir: direction,
+    nodesep: 100, // Horizontal separation between adjacent nodes
+    ranksep: 100, // Vertical separation between parent/child ranks
+  });
+ 
+  // Add nodes to dagre graph with actual visual sizes
+  nodes.forEach((node) => {
+    dagreGraph.setNode(node.id, { width: 200, height: 60 });
+  });
+ 
+  // Add edges to dagre graph
+  edges.forEach((edge) => {
+    const isSpouse = edge.relationshipType === 'spouse';
+    
+    // Check if these spouses share a child in the edges list
+    let shareChild = false;
+    if (isSpouse) {
+      // Find all children of source
+      const sourceChildren = edges.filter(e => e.relationshipType !== 'spouse' && e.source === edge.source).map(e => e.target);
+      // Find all children of target
+      const targetChildren = edges.filter(e => e.relationshipType !== 'spouse' && e.source === edge.target).map(e => e.target);
+      // Check if there is any common child
+      shareChild = sourceChildren.some(child => targetChildren.includes(child));
+    }
+    
+    // If they are spouses and share a child, do NOT add this edge to Dagre.
+    // Their shared parent-child connections are sufficient to position them next to each other.
+    // This avoids overlapping conflicts in the Dagre layout solver.
+    if (isSpouse && shareChild) {
+      return;
+    }
+
+    dagreGraph.setEdge(edge.source, edge.target, {
+      weight: isSpouse ? 2 : 1, // weight spouses heavier to keep them together
+      minlen: isSpouse ? 0 : 1,  // spouses on the same level, children go below
+    });
+  });
+ 
+  // Run layout algorithm
+  dagre.layout(dagreGraph);
+
+  // 1. Store initial positions
+  const positions = {};
+  nodes.forEach(node => {
+    const dNode = dagreGraph.node(node.id);
+    positions[node.id] = {
+      x: dNode ? dNode.x : 0,
+      y: dNode ? dNode.y : 0
+    };
+  });
+
+  // 2. Resolve 1D collisions for each generation level to avoid any node overlaps
+  const coordAttr = isHorizontal ? 'y' : 'x';
+  const minSep = isHorizontal ? 100 : 240;
+
+  // Group nodes by generation level
+  const genGroups = {};
+  nodes.forEach(node => {
+    const genLevel = node.data.generationLevel || 0;
+    if (!genGroups[genLevel]) {
+      genGroups[genLevel] = [];
+    }
+    genGroups[genLevel].push(node);
+  });
+
+  // Resolve overlaps within each generation level group
+  Object.keys(genGroups).forEach(genLevel => {
+    const groupNodes = genGroups[genLevel];
+    if (groupNodes.length <= 1) return;
+
+    // Map to items with current coordinates
+    const items = groupNodes.map(node => ({
+      id: node.id,
+      curr: positions[node.id] ? positions[node.id][coordAttr] : 0
+    }));
+
+    // Calculate original average to keep the generation level centered post-spacing
+    const origAvg = items.reduce((sum, item) => sum + item.curr, 0) / items.length;
+
+    // Run relaxation solver to separate overlapping nodes
+    let changed = true;
+    for (let iter = 0; iter < 300 && changed; iter++) {
+      changed = false;
+      items.sort((a, b) => a.curr - b.curr);
+      for (let i = 0; i < items.length - 1; i++) {
+        const a = items[i];
+        const b = items[i + 1];
+        const overlap = a.curr + minSep - b.curr;
+        if (overlap > 0.1) {
+          const push = overlap / 2;
+          a.curr -= push;
+          b.curr += push;
+          changed = true;
+        }
+      }
+    }
+
+    // Centering step: shift all items to match original average coordinate
+    const finalAvg = items.reduce((sum, item) => sum + item.curr, 0) / items.length;
+    const shift = origAvg - finalAvg;
+    items.forEach(item => {
+      item.curr += shift;
+    });
+
+    // Save resolved coordinates back
+    items.forEach(item => {
+      if (positions[item.id]) {
+        positions[item.id][coordAttr] = item.curr;
+      }
+    });
+  });
+ 
+  // Translate coordinates back to React Flow nodes
+  const layoutedNodes = nodes.map((node) => {
+    const posX = positions[node.id] ? positions[node.id].x : 0;
+    const posY = positions[node.id] ? positions[node.id].y : 0;
+    
+    const genLevel = node.data.generationLevel || 0;
+    const genGap = 160; // 160px gap between row centers (leaves exactly 100px empty vertical space)
+    
+    let finalX, finalY;
+    if (isHorizontal) {
+      // LR layout: generations align in vertical columns (x-axis locked)
+      finalX = genLevel * genGap;
+      finalY = posY;
+    } else {
+      // TB layout: generations align in horizontal rows (y-axis locked)
+      finalX = posX;
+      finalY = genLevel * genGap;
+    }
+    
+    // Position offset to center the handles (matching the 200x60 visual size)
+    return {
+      ...node,
+      targetPosition: isHorizontal ? 'left' : 'top',
+      sourcePosition: isHorizontal ? 'right' : 'bottom',
+      position: {
+        x: finalX - 100, // half of visual node width (200/2)
+        y: finalY - 30,  // half of visual node height (60/2)
+      },
+    };
+  });
+ 
+  // Update edges dynamically to connect to the correct source and target midpoints
+  const layoutedEdges = edges.map((edge) => {
+    const isSpouse = edge.relationshipType === 'spouse';
+    
+    // Find the source and target node positions to evaluate closest sides
+    const srcNode = layoutedNodes.find(n => n.id === edge.source);
+    const tgtNode = layoutedNodes.find(n => n.id === edge.target);
+    
+    let srcHandle = isHorizontal ? 'right-source' : 'bottom-source';
+    let tgtHandle = isHorizontal ? 'left-target' : 'top-target';
+    
+    if (isSpouse && srcNode && tgtNode) {
+      if (isHorizontal) {
+        // Spouse is vertical in LR layout - use top/bottom midpoints based on vertical order
+        if (srcNode.position.y < tgtNode.position.y) {
+          srcHandle = 'bottom-source';
+          tgtHandle = 'top-target';
+        } else {
+          srcHandle = 'top-source';
+          tgtHandle = 'bottom-target';
+        }
+      } else {
+        // Spouse is horizontal in TB layout - use left/right midpoints based on horizontal order
+        if (srcNode.position.x < tgtNode.position.x) {
+          srcHandle = 'right-source';
+          tgtHandle = 'left-target';
+        } else {
+          srcHandle = 'left-source';
+          tgtHandle = 'right-target';
+        }
+      }
+    }
+    
+    return {
+      ...edge,
+      sourceHandle: srcHandle,
+      targetHandle: tgtHandle,
+    };
+  });
+ 
+  return { nodes: layoutedNodes, edges: layoutedEdges };
+};
+
+const Canvas = ({
+  rawNodes,
+  rawEdges,
+  userRole,
+  activeUserId,
+  onAddChild,
+  onAddSpouse,
+  onEditProfile,
+  onCheckRelation,
+  onDeleteNode,
+  searchQuery,
+  relationSource,
+  relationTarget,
+  onNodeClick,
+  layoutDirection = 'TB', // 'TB' or 'LR'
+  onViewImage,
+  onViewCrossTree
+}) => {
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+
+  // Compute layout and prepare nodes/edges when raw data or configuration changes
+  useEffect(() => {
+    if (rawNodes.length === 0) {
+      setNodes([]);
+      setEdges([]);
+      return;
+    }
+
+    // 1. Prepare React Flow edges
+    const reactFlowEdges = rawEdges.map((edge) => {
+      const isSpouse = edge.relationshipType === 'spouse';
+      return {
+        id: edge._id,
+        source: edge.sourceNodeId,
+        target: edge.targetNodeId,
+        relationshipType: edge.relationshipType,
+        type: isSpouse ? 'straight' : 'smoothstep',
+        animated: false, // no animation needed for straight spouse lines
+        className: isSpouse ? 'spouse' : 'parent_child',
+        data: { relationshipType: edge.relationshipType },
+        style: isSpouse 
+          ? { stroke: '#f43f5e', strokeWidth: 3, strokeDasharray: '6 4' } 
+          : { stroke: '#10b981', strokeWidth: 2 },
+        // Add arrow markers for parent_child relationships
+        markerEnd: !isSpouse ? {
+          type: MarkerType.ArrowClosed,
+          width: 15,
+          height: 15,
+          color: '#10b981',
+        } : undefined,
+      };
+    });
+
+    // 2. Map nodes of the tree to React Flow format
+    const reactFlowNodes = rawNodes.map((node) => {
+      // Find if node has a spouse in the tree
+      const hasSpouse = rawEdges.some(
+        e => e.relationshipType === 'spouse' && 
+        (e.sourceNodeId === node._id || e.targetNodeId === node._id)
+      );
+
+      // Determine if we should show the cross-tree link button for this node.
+      // We only show it for the imported spouse copy, not the native member node.
+      // In a cross-tree marriage, the spouse copy has a later ObjectId creation timestamp (larger _id) than the native spouse.
+      let showCrossTreeLink = false;
+      if (node.crossTreeLinkId) {
+        const spouseEdge = rawEdges.find(
+          e => e.relationshipType === 'spouse' && 
+          (e.sourceNodeId === node._id || e.targetNodeId === node._id)
+        );
+        if (spouseEdge) {
+          const spouseId = spouseEdge.sourceNodeId === node._id ? spouseEdge.targetNodeId : spouseEdge.sourceNodeId;
+          const spouseNode = rawNodes.find(n => n._id === spouseId);
+          if (spouseNode) {
+            showCrossTreeLink = node._id.toString() > spouseNode._id.toString();
+          } else {
+            showCrossTreeLink = true;
+          }
+        } else {
+          showCrossTreeLink = true;
+        }
+      }
+
+      // Match search filters
+      const isSearched = searchQuery 
+        ? node.name.toLowerCase().includes(searchQuery.toLowerCase()) 
+        : false;
+
+      const isSource = relationSource ? relationSource._id === node._id : false;
+      const isTarget = relationTarget ? relationTarget._id === node._id : false;
+
+      return {
+        id: node._id,
+        type: 'kinshipNode',
+        data: {
+          _id: node._id,
+          name: node.name,
+          gender: node.gender,
+          dob: node.dob,
+          bloodGroup: node.bloodGroup,
+          gotram: node.gotram,
+          generationLevel: node.generationLevel,
+          parity: node.parity,
+          profilePictureUrl: node.profilePictureUrl,
+          mobileNumber: node.mobileNumber,
+          socialLinks: node.socialLinks,
+          userRole: userRole,
+          linkedUserId: node.linkedUserId,
+          isCurrentUser: node.linkedUserId && activeUserId && node.linkedUserId.toString() === activeUserId.toString(),
+          hasSpouse,
+          isSearched,
+          isRelationSource: isSource,
+          isRelationTarget: isTarget,
+          onAddChild,
+          onAddSpouse,
+          onEditProfile,
+          onCheckRelation,
+          isDeceased: node.isDeceased,
+          dateOfDeath: node.dateOfDeath,
+          onViewImage,
+          crossTreeLinkId: showCrossTreeLink ? node.crossTreeLinkId : null,
+          onViewCrossTree,
+        },
+        position: { x: 0, y: 0 }, // positions calculated dynamically by Dagre below
+      };
+    });
+
+    // 3. Apply Dagre auto-layout algorithm
+    const layout = getLayoutedElements(reactFlowNodes, reactFlowEdges, layoutDirection);
+
+    setNodes(layout.nodes);
+    setEdges(layout.edges);
+  }, [
+    rawNodes,
+    rawEdges,
+    userRole,
+    activeUserId,
+    searchQuery,
+    relationSource,
+    relationTarget,
+    layoutDirection,
+    setNodes,
+    setEdges
+  ]);
+
+  return (
+    <div className="w-full h-full relative bg-slate-950">
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        nodeTypes={nodeTypes}
+        onNodeClick={onNodeClick}
+        fitView
+        fitViewOptions={{ padding: 0.2, maxZoom: 1.2 }}
+        minZoom={0.1}
+        maxZoom={2}
+      >
+        <Controls showInteractive={false} className="border border-slate-800 bg-slate-900" />
+        <Background color="#1e293b" gap={16} size={1} />
+      </ReactFlow>
+    </div>
+  );
+};
+
+export default Canvas;
