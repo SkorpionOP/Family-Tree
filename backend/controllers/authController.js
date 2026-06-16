@@ -296,7 +296,8 @@ const firebaseLogin = async (req, res) => {
     const { verifyFirebaseIdToken } = require('../utils/firebaseVerifier');
     const decoded = await verifyFirebaseIdToken(firebaseToken);
     
-    const { email, name, picture, email_verified, uid } = decoded;
+    const { email, name, picture, email_verified } = decoded;
+    const uid = decoded.uid || decoded.sub;
 
     if (!email) {
       return res.status(400).json({ message: 'Firebase token is missing email' });
