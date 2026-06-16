@@ -5,6 +5,8 @@ import ReactFlow, {
   useNodesState,
   useEdgesState,
   MarkerType,
+  ReactFlowProvider,
+  useReactFlow,
 } from 'reactflow';
 import dagre from 'dagre';
 import CustomNode from './CustomNode';
@@ -210,7 +212,7 @@ const getLayoutedElements = (nodes, edges, direction = 'TB') => {
   return { nodes: layoutedNodes, edges: layoutedEdges };
 };
 
-const Canvas = ({
+const CanvasComponent = ({
   rawNodes,
   rawEdges,
   userRole,
@@ -230,6 +232,7 @@ const Canvas = ({
 }) => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const { fitView } = useReactFlow();
 
   // Compute layout and prepare nodes/edges when raw data or configuration changes
   useEffect(() => {
@@ -356,6 +359,16 @@ const Canvas = ({
     setEdges
   ]);
 
+  // Fit view whenever nodes length changes or layout completes
+  useEffect(() => {
+    if (nodes.length > 0) {
+      const timer = setTimeout(() => {
+        fitView({ padding: 0.35, duration: 400 });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [nodes, fitView]);
+
   return (
     <div className="w-full h-full relative bg-surface-0">
       {/* Subtle radial glow behind the tree */}
@@ -371,9 +384,9 @@ const Canvas = ({
         nodeTypes={nodeTypes}
         onNodeClick={onNodeClick}
         fitView
-        fitViewOptions={{ padding: 0.2, maxZoom: 1.2 }}
-        minZoom={0.1}
-        maxZoom={2}
+        fitViewOptions={{ padding: 0.35 }}
+        minZoom={0.15}
+        maxZoom={1.5}
         proOptions={{ hideAttribution: true }}
       >
         <Controls 
@@ -390,5 +403,11 @@ const Canvas = ({
     </div>
   );
 };
+
+const Canvas = (props) => (
+  <ReactFlowProvider>
+    <CanvasComponent {...props} />
+  </ReactFlowProvider>
+);
 
 export default Canvas;
