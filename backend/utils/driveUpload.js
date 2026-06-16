@@ -3,7 +3,11 @@ const { Readable } = require('stream');
 const path = require('path');
 const fs = require('fs');
 
-const keyFilePath = path.join(__dirname, '../service-account.json');
+const localKeyPath = path.join(__dirname, '../service-account.json');
+const renderKeyPath = '/etc/secrets/service-account.json';
+const keyFilePath = fs.existsSync(localKeyPath)
+  ? localKeyPath
+  : (fs.existsSync(renderKeyPath) ? renderKeyPath : localKeyPath);
 
 let auth = null;
 let driveAvailable = false;
@@ -15,15 +19,15 @@ if (fs.existsSync(keyFilePath)) {
       scopes: ['https://www.googleapis.com/auth/drive'],
     });
     driveAvailable = true;
-    console.log('Google Drive API configuration loaded successfully from service-account.json');
+    console.log(`Google Drive API configuration loaded successfully from ${keyFilePath}`);
   } catch (error) {
-    console.error('Error loading service-account.json:', error.message);
+    console.error(`Error loading service account key from ${keyFilePath}:`, error.message);
   }
 } else {
   console.warn(
-    'WARNING: service-account.json not found in backend directory.\n' +
+    'WARNING: service account key file not found.\n' +
     'Profile pictures will be converted to base64 Data URLs instead of being uploaded to Google Drive.\n' +
-    'To enable Google Drive uploads, place your service account key file at /home/grimm/dravidian-kinship-tree/backend/service-account.json'
+    'To enable Google Drive uploads, place your key at backend/service-account.json or as a Render Secret File at /etc/secrets/service-account.json'
   );
 }
 
