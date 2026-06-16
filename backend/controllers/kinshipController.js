@@ -376,12 +376,14 @@ const createNode = async (req, res) => {
 
     let generationLevel = 0;
     let parity = 0;
+    const nodesModified = [];
 
     const { childId } = req.body;
+    let childNode = null;
 
     if (childId) {
       // Adding a parent to an existing child node
-      const childNode = await Node.findOne({ _id: childId, treeId });
+      childNode = await Node.findOne({ _id: childId, treeId });
       if (!childNode) {
         return res.status(404).json({ message: 'Child node not found' });
       }
@@ -442,12 +444,33 @@ const createNode = async (req, res) => {
       parity = 0;
     }
 
-    // Gotram rule: child inherits parent's gotram
+    // Gotram rule: child inherits father's gotram
     let childGotram = gotram || '';
     if (parentId) {
       const parentNode = await Node.findOne({ _id: parentId, treeId });
       if (parentNode) {
-        childGotram = parentNode.gotram || '';
+        let fatherNode = null;
+        if (parentNode.gender === 1) {
+          fatherNode = parentNode;
+        } else {
+          // Parent is female, find her spouse (if any)
+          const spouseEdge = await Edge.findOne({
+            treeId,
+            relationshipType: 'spouse',
+            $or: [{ sourceNodeId: parentId }, { targetNodeId: parentId }]
+          });
+          if (spouseEdge) {
+            const fatherId = spouseEdge.sourceNodeId.toString() === parentId.toString()
+              ? spouseEdge.targetNodeId
+              : spouseEdge.sourceNodeId;
+            fatherNode = await Node.findById(fatherId);
+          }
+        }
+        if (fatherNode && fatherNode.gotram) {
+          childGotram = fatherNode.gotram;
+        } else {
+          childGotram = parentNode.gotram || '';
+        }
       }
     }
 
@@ -498,13 +521,32 @@ const createNode = async (req, res) => {
         const spouseNode = await Node.findById(spouseId);
         if (spouseNode) {
           if (spouseNode.gender === 1) {
+            nodesModified.push({ nodeId: newNode._id, gotram: newNode.gotram });
             newNode.gotram = spouseNode.gotram;
             await newNode.save();
           } else if (gender === 1) {
+            nodesModified.push({ nodeId: spouseNode._id, gotram: spouseNode.gotram });
             spouseNode.gotram = newNode.gotram;
             await spouseNode.save();
           }
         }
+      }
+
+      // Sync child's gotram to match the father
+      let fatherNode = null;
+      if (newNode.gender === 1) {
+        fatherNode = newNode;
+      } else if (otherParents.length > 0) {
+        const spouseNode = await Node.findById(otherParents[0].sourceNodeId);
+        if (spouseNode && spouseNode.gender === 1) {
+          fatherNode = spouseNode;
+        }
+      }
+
+      if (fatherNode && fatherNode.gotram && childNode) {
+        nodesModified.push({ nodeId: childNode._id, gotram: childNode.gotram });
+        childNode.gotram = fatherNode.gotram;
+        await childNode.save();
       }
     } else if (parentId) {
       await Edge.create({
@@ -546,7 +588,8 @@ const createNode = async (req, res) => {
       action: 'CREATE_NODE',
       description: `${req.user.name || req.user.email} added node "${newNode.name}"`,
       revertData: {
-        nodeId: newNode._id
+        nodeId: newNode._id,
+        nodesModified
       }
     });
 
@@ -1076,6 +1119,43 @@ const createParentChildEdge = async (req, res) => {
     });
 
     const parentChildEdgeIds = [edge._id];
+    const nodesModified = [];
+
+    // Find the father (male parent) in the relationship to sync Gotram to child
+    let fatherNode = null;
+    if (parentNode.gender === 1) {
+      fatherNode = parentNode;
+    } else {
+      // Parent is female, find her spouse (if any)
+      const spouseEdge = await Edge.findOne({
+        treeId,
+        relationshipType: 'spouse',
+        $or: [{ sourceNodeId: parentId }, { targetNodeId: parentId }]
+      });
+      if (spouseEdge) {
+        const fatherId = spouseEdge.sourceNodeId.toString() === parentId.toString()
+          ? spouseEdge.targetNodeId
+          : spouseEdge.sourceNodeId;
+        fatherNode = await Node.findById(fatherId);
+      }
+      // Fallback: If father still not found, check if child has another parent who is male
+      if (!fatherNode && existingParents && existingParents.length > 0) {
+        for (const ep of existingParents) {
+          const pNode = await Node.findById(ep.sourceNodeId);
+          if (pNode && pNode.gender === 1) {
+            fatherNode = pNode;
+            break;
+          }
+        }
+      }
+    }
+
+    if (fatherNode && fatherNode.gotram) {
+      // Record original gotram of child for reversion
+      nodesModified.push({ nodeId: childNode._id, gotram: childNode.gotram });
+      childNode.gotram = fatherNode.gotram;
+      await childNode.save();
+    }
 
     // If the parent has a spouse, automatically link them too
     const spouseEdges = await Edge.find({
@@ -1109,7 +1189,6 @@ const createParentChildEdge = async (req, res) => {
 
     // If the child already has another parent, link them as spouses!
     let createdSpouseEdgeId = null;
-    const nodesModified = [];
 
     if (existingParents.length > 0) {
       const spouseId = existingParents[0].sourceNodeId;
@@ -1882,9 +1961,19 @@ const revertTreeLog = async (req, res) => {
     const { action, revertData } = log;
 
     if (action === 'CREATE_NODE') {
-      const { nodeId } = revertData;
+      const { nodeId, nodesModified } = revertData;
       await Node.findByIdAndDelete(nodeId);
       await Edge.deleteMany({ $or: [{ sourceNodeId: nodeId }, { targetNodeId: nodeId }] });
+
+      if (nodesModified && nodesModified.length > 0) {
+        for (const mod of nodesModified) {
+          const n = await Node.findById(mod.nodeId);
+          if (n) {
+            if (mod.gotram !== undefined) n.gotram = mod.gotram;
+            await n.save();
+          }
+        }
+      }
 
     } else if (action === 'CREATE_SPOUSE') {
       const { nodesCreated, nodesModified } = revertData;

@@ -48,6 +48,7 @@ const NodeModal = ({
   const [uploadError, setUploadError] = useState('');
   const [crossTreeIdInput, setCrossTreeIdInput] = useState('');
   const [crossMemberSearchQuery, setCrossMemberSearchQuery] = useState('');
+  const [parentSearchQuery, setParentSearchQuery] = useState('');
 
   const handleLoadCrossTree = (e) => {
     e.preventDefault();
@@ -116,6 +117,7 @@ const NodeModal = ({
       setCrossTreeNodes([]);
       setCrossTreeIdInput('');
       setCrossMemberSearchQuery('');
+      setParentSearchQuery('');
       
       if (mode === 'edit_profile' && nodeData) {
         setFormData({
@@ -274,6 +276,106 @@ const NodeModal = ({
       
       return true;
     });
+  };
+
+  const getValidIndividualParents = () => {
+    if (!targetNode || !nodes) return [];
+    const currentParentEdges = edges
+      ? edges.filter(e => e.relationshipType === 'parent_child' && e.targetNodeId === targetNode._id)
+      : [];
+    const currentParentIds = currentParentEdges.map(e => e.sourceNodeId);
+    
+    let conflictGender = null;
+    if (currentParentIds.length > 0) {
+      const parent1 = nodes.find(n => n._id === currentParentIds[0]);
+      if (parent1) {
+        conflictGender = parent1.gender;
+      }
+    }
+    
+    return nodes.filter(node => {
+      // Cannot be child itself
+      if (node._id === targetNode._id) return false;
+      // Cannot be already linked
+      if (currentParentIds.includes(node._id)) return false;
+      // Cannot have same gender as existing parent
+      if (conflictGender !== null && node.gender === conflictGender) return false;
+      
+      // Age constraint: parent must be at least 15 years older than child
+      if (targetNode.dob && node.dob) {
+        const childBirthYear = new Date(targetNode.dob).getFullYear();
+        const parentBirthYear = new Date(node.dob).getFullYear();
+        if (childBirthYear - parentBirthYear < 15) return false;
+      }
+      
+      return true;
+    });
+  };
+
+  const getValidParentCoupleCandidates = () => {
+    if (!targetNode || !nodes) return [];
+    
+    const validIndividuals = getValidIndividualParents();
+    const spouseEdges = edges ? edges.filter(e => e.relationshipType === 'spouse') : [];
+    
+    const couples = [];
+    const processedIndividualIds = new Set();
+
+    // Find couples where BOTH are in validIndividuals
+    spouseEdges.forEach(edge => {
+      const nodeA = validIndividuals.find(n => n._id === edge.sourceNodeId);
+      const nodeB = validIndividuals.find(n => n._id === edge.targetNodeId);
+      
+      if (nodeA && nodeB) {
+        const husband = nodeA.gender === 1 ? nodeA : nodeB;
+        const wife = nodeA.gender === 1 ? nodeB : nodeA;
+        couples.push({
+          id: husband._id,
+          label: `${husband.name} & ${wife.name} (Gotram: ${husband.gotram || 'N/A'} | Gen: ${husband.generationLevel})`,
+          type: 'couple',
+          husband,
+          wife
+        });
+        processedIndividualIds.add(nodeA._id);
+        processedIndividualIds.add(nodeB._id);
+      }
+    });
+
+    // Add remaining/single individuals
+    const individuals = [];
+    validIndividuals.forEach(node => {
+      if (!processedIndividualIds.has(node._id)) {
+        individuals.push({
+          id: node._id,
+          label: `${node.name} (Gotram: ${node.gotram || 'N/A'} | Gen: ${node.generationLevel})`,
+          type: 'individual',
+          node
+        });
+      }
+    });
+
+    let combined = [...couples, ...individuals];
+
+    if (parentSearchQuery.trim()) {
+      const query = parentSearchQuery.trim().toLowerCase();
+      combined = combined.filter(item => {
+        if (item.type === 'couple') {
+          return (
+            item.husband.name.toLowerCase().includes(query) ||
+            (item.husband.gotram && item.husband.gotram.toLowerCase().includes(query)) ||
+            item.wife.name.toLowerCase().includes(query) ||
+            (item.wife.gotram && item.wife.gotram.toLowerCase().includes(query))
+          );
+        } else {
+          return (
+            item.node.name.toLowerCase().includes(query) ||
+            (item.node.gotram && item.node.gotram.toLowerCase().includes(query))
+          );
+        }
+      });
+    }
+
+    return combined;
   };
 
   const getCoupleOptions = () => {
@@ -984,10 +1086,25 @@ const NodeModal = ({
               {mode === 'add_parent' && parentType === 'existing' && (
                 <div className="col-span-2 space-y-4">
                   <p className="text-xs text-slate-400">
-                    Select a member from the current tree to establish a parent relationship with <span className="font-bold text-slate-200">{targetNode?.name || 'the selected child'}</span>.
+                    Select a member or married couple from the current tree to establish a parent relationship with <span className="font-bold text-slate-200">{targetNode?.name || 'the selected child'}</span>. Linking a married couple links both parents simultaneously.
                   </p>
+
+                  {/* Search Filter input */}
+                  {(getValidParentCoupleCandidates().length > 0 || parentSearchQuery.trim() !== '') && (
+                    <div>
+                      <label className="text-[10px] text-slate-500 uppercase font-bold tracking-wider block mb-1">Search Parent Candidates</label>
+                      <input
+                        type="text"
+                        value={parentSearchQuery}
+                        onChange={(e) => setParentSearchQuery(e.target.value)}
+                        placeholder="Type name or gotram to filter..."
+                        className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                      />
+                    </div>
+                  )}
+
                   <div>
-                    <label className="text-[10px] text-slate-500 uppercase font-bold tracking-wider block mb-1">Select Parent Node</label>
+                    <label className="text-[10px] text-slate-500 uppercase font-bold tracking-wider block mb-1">Select Parent Couple / Node</label>
                     <select
                       name="parentNodeId"
                       value={formData.parentNodeId}
@@ -995,14 +1112,15 @@ const NodeModal = ({
                       required
                       className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 cursor-pointer"
                     >
-                      <option value="">Select Parent Node</option>
-                      {getValidParentCandidates().map((node) => (
-                        <option key={node._id} value={node._id}>
-                          {node.name} (Gotram: {node.gotram || 'N/A'} | Parity: {node.parity} | Gen: {node.generationLevel})
+                      <option value="">Select Parent Couple / Node</option>
+                      {getValidParentCoupleCandidates().map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.type === 'couple' ? '💑 ' : '👤 '}
+                          {item.label}
                         </option>
                       ))}
                     </select>
-                    {getValidParentCandidates().length === 0 && (
+                    {getValidParentCoupleCandidates().length === 0 && (
                       <span className="text-[10px] text-amber-500 mt-1 block">
                         No valid parent candidates found in this tree.
                       </span>
