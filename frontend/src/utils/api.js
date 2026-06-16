@@ -1,27 +1,7 @@
 const getApiUrls = () => {
-  const urls = [];
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname;
-    const protocol = window.location.protocol;
-    
-    // 1. If we are on a devtunnel, derive the backend tunnel URL dynamically
-    if (hostname.includes('.devtunnels.ms')) {
-      const tunnelBackend = `${protocol}//${hostname.replace('-5173', '-5000')}/api`;
-      urls.push(tunnelBackend);
-    } else if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      urls.push('http://localhost:5000/api');
-    }
-  }
-  
-  // 2. Add user's specific devtunnel backend URL
-  urls.push('https://cc4wfmk4-5000.inc1.devtunnels.ms/api');
-  
-  // 3. Add default local backend URL
-  urls.push('http://localhost:5000/api');
-  
-  // Deduplicate keeping order
-  return [...new Set(urls)];
+  return ['https://family-tree-lica.onrender.com/api'];
 };
+
 
 const API_URLS = getApiUrls();
 let cachedWorkingBaseUrl = null;
