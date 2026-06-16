@@ -348,7 +348,7 @@ const getTreeGraph = async (req, res) => {
 // @access  Private (Admin or Sub-Admin)
 const createNode = async (req, res) => {
   const { treeId } = req.params;
-  const { name, dob, bloodGroup, gotram, mobileNumber, email, socialLinks, gender, parentId, profilePictureUrl, isDeceased, dateOfDeath } = req.body;
+  const { name, dob, bloodGroup, gotram, mobileNumber, email, socialLinks, gender, parentId, profilePictureUrl, isDeceased, dateOfDeath, marriageDate } = req.body;
 
   try {
     const tree = await Tree.findById(treeId);
@@ -488,7 +488,8 @@ const createNode = async (req, res) => {
       parity,
       profilePictureUrl: profilePictureUrl || '',
       isDeceased: isDeceased || false,
-      dateOfDeath: dateOfDeath ? new Date(dateOfDeath) : null
+      dateOfDeath: dateOfDeath ? new Date(dateOfDeath) : null,
+      marriageDate: marriageDate ? new Date(marriageDate) : null
     });
 
     if (childId) {
@@ -606,7 +607,8 @@ const createSpouseNode = async (req, res) => {
   const { treeId } = req.params;
   const { 
     name, dob, bloodGroup, gotram, mobileNumber, email, socialLinks, 
-    existingNodeId, profilePictureUrl, crossTreeNodeId, isDeceased, dateOfDeath
+    existingNodeId, profilePictureUrl, crossTreeNodeId, isDeceased, dateOfDeath,
+    marriageDate
   } = req.body;
 
   try {
@@ -730,7 +732,8 @@ const createSpouseNode = async (req, res) => {
         profilePictureUrl: originalNode.profilePictureUrl,
         crossTreeLinkId: originalNode._id,
         isDeceased: originalNode.isDeceased || false,
-        dateOfDeath: originalNode.dateOfDeath || null
+        dateOfDeath: originalNode.dateOfDeath || null,
+        marriageDate: marriageDate ? new Date(marriageDate) : (originalNode.marriageDate || null)
       });
 
       // Create copy of existingNode in originalNode's tree (Tree B)
@@ -749,7 +752,8 @@ const createSpouseNode = async (req, res) => {
         profilePictureUrl: existingNode.profilePictureUrl,
         crossTreeLinkId: existingNode._id,
         isDeceased: existingNode.isDeceased || false,
-        dateOfDeath: existingNode.dateOfDeath || null
+        dateOfDeath: existingNode.dateOfDeath || null,
+        marriageDate: marriageDate ? new Date(marriageDate) : (existingNode.marriageDate || null)
       });
 
       // Link existing node to its copy in other tree
@@ -757,13 +761,17 @@ const createSpouseNode = async (req, res) => {
       if (existingNode.gender === 0) {
         existingNode.gotram = originalNode.gotram;
       }
-      await existingNode.save();
-
       // Link original node to its copy in current tree
       originalNode.crossTreeLinkId = spouseNode._id;
       if (existingNode.gender === 1) {
         originalNode.gotram = existingNode.gotram;
       }
+      // Update existingNode and originalNode marriageDate
+      if (marriageDate) {
+        existingNode.marriageDate = new Date(marriageDate);
+        originalNode.marriageDate = new Date(marriageDate);
+      }
+      await existingNode.save();
       await originalNode.save();
 
       // Create spouse edge in other tree
@@ -823,8 +831,12 @@ const createSpouseNode = async (req, res) => {
         parity,
         profilePictureUrl: profilePictureUrl || '',
         isDeceased: isDeceased || false,
-        dateOfDeath: dateOfDeath ? new Date(dateOfDeath) : null
+        dateOfDeath: dateOfDeath ? new Date(dateOfDeath) : null,
+        marriageDate: marriageDate ? new Date(marriageDate) : null
       });
+
+      existingNode.marriageDate = marriageDate ? new Date(marriageDate) : null;
+      await existingNode.save();
     }
 
     // Create spouse edge
@@ -1255,7 +1267,7 @@ const createParentChildEdge = async (req, res) => {
 // @access  Private (Admin, Sub-Admin, or Assigned User)
 const updateNode = async (req, res) => {
   const { treeId, nodeId } = req.params;
-  const { name, dob, bloodGroup, gotram, mobileNumber, email, socialLinks, profilePictureUrl, isDeceased, dateOfDeath } = req.body;
+  const { name, dob, bloodGroup, gotram, mobileNumber, email, socialLinks, profilePictureUrl, isDeceased, dateOfDeath, marriageDate } = req.body;
 
   try {
     const tree = await Tree.findById(treeId);
@@ -1289,7 +1301,8 @@ const updateNode = async (req, res) => {
       socialLinks: node.socialLinks,
       profilePictureUrl: node.profilePictureUrl,
       isDeceased: node.isDeceased,
-      dateOfDeath: node.dateOfDeath
+      dateOfDeath: node.dateOfDeath,
+      marriageDate: node.marriageDate
     };
 
     // Validation: 18+ check for married people
@@ -1420,6 +1433,27 @@ const updateNode = async (req, res) => {
     if (profilePictureUrl !== undefined) node.profilePictureUrl = profilePictureUrl;
     if (isDeceased !== undefined) node.isDeceased = isDeceased;
     if (dateOfDeath !== undefined) node.dateOfDeath = dateOfDeath ? new Date(dateOfDeath) : null;
+    if (marriageDate !== undefined) {
+      const parsedMarriageDate = marriageDate ? new Date(marriageDate) : null;
+      node.marriageDate = parsedMarriageDate;
+
+      // Sync marriage date to spouse node in the same tree
+      const spouseEdge = await Edge.findOne({
+        treeId,
+        relationshipType: 'spouse',
+        $or: [{ sourceNodeId: nodeId }, { targetNodeId: nodeId }]
+      });
+      if (spouseEdge) {
+        const spouseId = spouseEdge.sourceNodeId.toString() === nodeId.toString() 
+          ? spouseEdge.targetNodeId 
+          : spouseEdge.sourceNodeId;
+        const spouse = await Node.findOne({ _id: spouseId, treeId });
+        if (spouse) {
+          spouse.marriageDate = parsedMarriageDate;
+          await spouse.save();
+        }
+      }
+    }
 
     const updatedNode = await node.save();
 
@@ -1439,7 +1473,8 @@ const updateNode = async (req, res) => {
           socialLinks: linkedNode.socialLinks,
           profilePictureUrl: linkedNode.profilePictureUrl,
           isDeceased: linkedNode.isDeceased,
-          dateOfDeath: linkedNode.dateOfDeath
+          dateOfDeath: linkedNode.dateOfDeath,
+          marriageDate: linkedNode.marriageDate
         };
         if (name !== undefined) linkedNode.name = name;
         if (dob !== undefined) linkedNode.dob = dob ? new Date(dob) : null;
@@ -1451,6 +1486,7 @@ const updateNode = async (req, res) => {
         if (profilePictureUrl !== undefined) linkedNode.profilePictureUrl = profilePictureUrl;
         if (isDeceased !== undefined) linkedNode.isDeceased = isDeceased;
         if (dateOfDeath !== undefined) linkedNode.dateOfDeath = dateOfDeath ? new Date(dateOfDeath) : null;
+        if (marriageDate !== undefined) linkedNode.marriageDate = marriageDate ? new Date(marriageDate) : null;
         await linkedNode.save();
       }
     }

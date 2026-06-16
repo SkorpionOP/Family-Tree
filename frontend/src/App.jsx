@@ -6,6 +6,7 @@ import Sidebar from './components/Sidebar';
 import Canvas from './components/Canvas';
 import NodeModal from './components/NodeModal';
 import RolesModal from './components/RolesModal';
+import NotificationViewModal from './components/NotificationViewModal';
 import Profile from './components/Profile';
 import SuperAdminDashboard from './components/SuperAdminDashboard';
 import MailVerification from './components/MailVerification';
@@ -81,6 +82,53 @@ const App = () => {
   const [logs, setLogs] = useState([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
 
+  // Notifications states
+  const [notifications, setNotifications] = useState([]);
+  const [selectedNotification, setSelectedNotification] = useState(null);
+  const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
+
+  const fetchNotifications = async (treeId) => {
+    if (!treeId) {
+      setNotifications([]);
+      return;
+    }
+    try {
+      const data = await api.kinship.getNotifications(treeId);
+      setNotifications(data);
+    } catch (err) {
+      console.warn('Failed to load notifications:', err);
+      setNotifications([]);
+    }
+  };
+
+  const handleMarkNotificationRead = async (notificationId) => {
+    if (!activeTreeId) return;
+    try {
+      await api.kinship.markNotificationRead(activeTreeId, notificationId);
+      setNotifications(prev => prev.map(n => n._id === notificationId ? { ...n, isRead: true } : n));
+    } catch (err) {
+      console.error('Failed to mark notification as read:', err);
+    }
+  };
+
+  const handleMarkAllNotificationsRead = async () => {
+    if (!activeTreeId) return;
+    try {
+      await api.kinship.markAllNotificationsRead(activeTreeId);
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    } catch (err) {
+      console.error('Failed to mark all notifications as read:', err);
+    }
+  };
+
+  const handleNotificationClick = (notification) => {
+    setSelectedNotification(notification);
+    setIsNotificationModalOpen(true);
+    if (!notification.isRead) {
+      handleMarkNotificationRead(notification._id);
+    }
+  };
+
   const fetchLogs = async () => {
     if (!activeTreeId) return;
     setLoadingLogs(true);
@@ -152,6 +200,7 @@ const App = () => {
       // Clear selected nodes and relation result when switching trees (persisting source & target)
       setSelectedNode(null);
       setRelationResult(null);
+      setNotifications([]);
     }
   }, [activeTreeId]);
 
@@ -185,6 +234,14 @@ const App = () => {
         setPendingRequestsCount(reqs.length);
       } else {
         setPendingRequestsCount(0);
+      }
+
+      // Fetch notifications if user is Admin, Sub-Admin, or a linked member
+      const isLinkedNode = data.nodes.some(n => n.linkedUserId && user && n.linkedUserId.toString() === user._id.toString());
+      if (data.userRole === 'Admin' || data.userRole === 'Sub-Admin' || isLinkedNode) {
+        fetchNotifications(activeTreeId);
+      } else {
+        setNotifications([]);
       }
     } catch (err) {
       console.error(err);
@@ -639,6 +696,13 @@ const App = () => {
             loadingLogs={loadingLogs}
             fetchLogs={fetchLogs}
             onRevertLog={handleRevertLog}
+
+            // Notifications props
+            notifications={notifications}
+            onMarkNotificationRead={handleMarkNotificationRead}
+            onMarkAllNotificationsRead={handleMarkAllNotificationsRead}
+            onNotificationClick={handleNotificationClick}
+            hasNotificationAccess={userRole === 'Admin' || userRole === 'Sub-Admin' || rawNodes.some(n => n.linkedUserId && user && n.linkedUserId.toString() === user._id.toString())}
           />
         </div>
 
@@ -1202,6 +1266,16 @@ const App = () => {
         nodes={rawNodes}
         treeId={activeTreeId}
         onSubmit={handleManageRole}
+      />
+
+      <NotificationViewModal
+        isOpen={isNotificationModalOpen}
+        onClose={() => {
+          setIsNotificationModalOpen(false);
+          setSelectedNotification(null);
+        }}
+        notification={selectedNotification}
+        nodes={rawNodes}
       />
 
 

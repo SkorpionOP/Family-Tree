@@ -42,8 +42,10 @@ const apiFetch = async (path, options = {}) => {
   throw lastError || new Error('Network error: All backend links are unreachable');
 };
 
+let authToken = null;
+
 const getHeaders = () => {
-  const token = localStorage.getItem('token');
+  const token = authToken;
   const headers = {
     'Content-Type': 'application/json',
   };
@@ -54,7 +56,7 @@ const getHeaders = () => {
 };
 
 const getHeadersForUpload = () => {
-  const token = localStorage.getItem('token');
+  const token = authToken;
   const headers = {};
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
@@ -64,7 +66,7 @@ const getHeadersForUpload = () => {
 
 const handleResponse = async (res) => {
   if (res.status === 401) {
-    localStorage.removeItem('token');
+    authToken = null;
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('auth-unauthorized'));
     }
@@ -77,6 +79,12 @@ const handleResponse = async (res) => {
 };
 
 export const api = {
+  setToken: (token) => {
+    authToken = token;
+  },
+  getToken: () => {
+    return authToken;
+  },
   // Auth endpoints
   auth: {
     register: async (email, password) => {
@@ -329,6 +337,27 @@ export const api = {
     revertLog: async (treeId, logId) => {
       const res = await apiFetch(`/kinship/${treeId}/logs/${logId}/revert`, {
         method: 'POST',
+        headers: getHeaders(),
+      });
+      return handleResponse(res);
+    },
+    getNotifications: async (treeId) => {
+      const res = await apiFetch(`/kinship/${treeId}/notifications`, {
+        method: 'GET',
+        headers: getHeaders(),
+      });
+      return handleResponse(res);
+    },
+    markNotificationRead: async (treeId, notificationId) => {
+      const res = await apiFetch(`/kinship/${treeId}/notifications/${notificationId}/read`, {
+        method: 'PUT',
+        headers: getHeaders(),
+      });
+      return handleResponse(res);
+    },
+    markAllNotificationsRead: async (treeId) => {
+      const res = await apiFetch(`/kinship/${treeId}/notifications/read-all`, {
+        method: 'PUT',
         headers: getHeaders(),
       });
       return handleResponse(res);
