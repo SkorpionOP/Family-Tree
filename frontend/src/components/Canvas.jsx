@@ -394,7 +394,7 @@ const CanvasComponent = ({
   useEffect(() => {
     if (nodes.length > 0) {
       const timer = setTimeout(() => {
-        fitView({ padding: 0.35, duration: 400 });
+        fitView({ padding: 0.08, duration: 400 });
       }, 100);
       return () => clearTimeout(timer);
     }
@@ -415,7 +415,7 @@ const CanvasComponent = ({
         nodeTypes={nodeTypes}
         onNodeClick={onNodeClick}
         fitView
-        fitViewOptions={{ padding: 0.35 }}
+        fitViewOptions={{ padding: 0.08 }}
         minZoom={0.15}
         maxZoom={1.5}
         proOptions={{ hideAttribution: true }}
