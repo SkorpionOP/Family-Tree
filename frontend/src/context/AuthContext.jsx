@@ -79,10 +79,20 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Fetch user profile on mount if token exists
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      fetchUser();
+    } else {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setLoading(true);
       if (firebaseUser) {
+        setLoading(true);
         setFbUser(firebaseUser);
         if (firebaseUser.emailVerified) {
           try {
@@ -103,10 +113,17 @@ export const AuthProvider = ({ children }) => {
           setLoading(false);
         }
       } else {
-        setFbUser(null);
-        localStorage.removeItem('token');
-        setUser(null);
-        setLoading(false);
+        // Only clear token if they were actually logged in to Firebase before (sign out)
+        setFbUser((prevFbUser) => {
+          if (prevFbUser) {
+            localStorage.removeItem('token');
+            setUser(null);
+          }
+          return null;
+        });
+        if (!localStorage.getItem('token')) {
+          setLoading(false);
+        }
       }
     });
 

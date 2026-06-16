@@ -276,6 +276,25 @@ const NodeModal = ({
     });
   };
 
+  const getCoupleOptions = () => {
+    if (!nodes || !edges) return [];
+    const spouseEdges = edges.filter(e => e.relationshipType === 'spouse');
+    
+    return spouseEdges.map(edge => {
+      const nodeA = nodes.find(n => n._id === edge.sourceNodeId);
+      const nodeB = nodes.find(n => n._id === edge.targetNodeId);
+      if (nodeA && nodeB) {
+        const husband = nodeA.gender === 1 ? nodeA : nodeB;
+        const wife = nodeA.gender === 1 ? nodeB : nodeA;
+        return {
+          id: husband._id,
+          label: `${husband.name} & ${wife.name} (Gen: ${husband.generationLevel})`
+        };
+      }
+      return null;
+    }).filter(Boolean);
+  };
+
   // Helper to check if a cross-tree node already has a spouse edge
   const isCrossNodeMarried = (nodeId) => {
     if (!crossTreeEdges) return false;
@@ -650,7 +669,7 @@ const NodeModal = ({
                   {/* Select Parent Node (Only shown when mode === 'add_child' and targetNodeId is null and nodes have length > 0) */}
                   {mode === 'add_child' && !targetNodeId && nodes && nodes.length > 0 && (
                     <div className="col-span-2 animate-in fade-in slide-in-from-top-1 duration-150">
-                      <label className="text-[10px] text-slate-500 uppercase font-bold tracking-wider block mb-1">Select Parent Node</label>
+                      <label className="text-[10px] text-slate-500 uppercase font-bold tracking-wider block mb-1">Select Parents (Couple)</label>
                       <select
                         name="parentId"
                         value={formData.parentId}
@@ -658,9 +677,9 @@ const NodeModal = ({
                         className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-350 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 cursor-pointer"
                       >
                         <option value="">None (Unconnected/Floating Node)</option>
-                        {nodes.map((node) => (
-                          <option key={node._id} value={node._id}>
-                            {node.name} (Gen: {node.generationLevel} | Parity: {node.parity})
+                        {getCoupleOptions().map((couple) => (
+                          <option key={couple.id} value={couple.id}>
+                            {couple.label}
                           </option>
                         ))}
                       </select>

@@ -1075,6 +1075,8 @@ const createParentChildEdge = async (req, res) => {
       relationshipType: 'parent_child'
     });
 
+    const parentChildEdgeIds = [edge._id];
+
     // If the parent has a spouse, automatically link them too
     const spouseEdges = await Edge.find({
       treeId,
@@ -1095,16 +1097,20 @@ const createParentChildEdge = async (req, res) => {
       });
 
       if (!alreadyLinked) {
-        await Edge.create({
+        const spouseEdge = await Edge.create({
           treeId,
           sourceNodeId: spouseId,
           targetNodeId: childId,
           relationshipType: 'parent_child'
         });
+        parentChildEdgeIds.push(spouseEdge._id);
       }
     }
 
     // If the child already has another parent, link them as spouses!
+    let createdSpouseEdgeId = null;
+    const nodesModified = [];
+
     if (existingParents.length > 0) {
       const spouseId = existingParents[0].sourceNodeId;
       
@@ -1118,20 +1124,23 @@ const createParentChildEdge = async (req, res) => {
       });
 
       if (!spouseEdgeExists) {
-        await Edge.create({
+        const spouseEdge = await Edge.create({
           treeId,
           sourceNodeId: parentId,
           targetNodeId: spouseId,
           relationshipType: 'spouse'
         });
+        createdSpouseEdgeId = spouseEdge._id;
 
         // Sync gotrams
         const spouseNode = await Node.findById(spouseId);
         if (spouseNode) {
           if (spouseNode.gender === 1) {
+            nodesModified.push({ nodeId: parentNode._id, gotram: parentNode.gotram });
             parentNode.gotram = spouseNode.gotram;
             await parentNode.save();
           } else if (parentNode.gender === 1) {
+            nodesModified.push({ nodeId: spouseNode._id, gotram: spouseNode.gotram });
             spouseNode.gotram = parentNode.gotram;
             await spouseNode.save();
           }
@@ -1148,7 +1157,12 @@ const createParentChildEdge = async (req, res) => {
       userId: req.user.id,
       userName: req.user.name || req.user.email,
       action: 'CREATE_RELATIONSHIP',
-      description: `${req.user.name || req.user.email} linked parent "${parentNode.name}" to child "${childNode.name}"`
+      description: `${req.user.name || req.user.email} linked parent "${parentNode.name}" to child "${childNode.name}"`,
+      revertData: {
+        parentChildEdgeIds,
+        spouseEdgeId: createdSpouseEdgeId,
+        nodesModified
+      }
     });
 
     res.status(201).json(edge);
@@ -1924,6 +1938,24 @@ const revertTreeLog = async (req, res) => {
             Object.keys(upd.fields).forEach(key => {
               n[key] = upd.fields[key];
             });
+            await n.save();
+          }
+        }
+      }
+
+    } else if (action === 'CREATE_RELATIONSHIP') {
+      const { parentChildEdgeIds, spouseEdgeId, nodesModified } = revertData;
+      if (parentChildEdgeIds && parentChildEdgeIds.length > 0) {
+        await Edge.deleteMany({ _id: { $in: parentChildEdgeIds } });
+      }
+      if (spouseEdgeId) {
+        await Edge.findByIdAndDelete(spouseEdgeId);
+      }
+      if (nodesModified && nodesModified.length > 0) {
+        for (const mod of nodesModified) {
+          const n = await Node.findById(mod.nodeId);
+          if (n) {
+            if (mod.gotram !== undefined) n.gotram = mod.gotram;
             await n.save();
           }
         }
