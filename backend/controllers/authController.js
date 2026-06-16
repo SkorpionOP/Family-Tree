@@ -73,7 +73,15 @@ const loginUser = async (req, res) => {
         const timeout = 5 * 60 * 1000; // 5 minutes
         const lastActiveTime = new Date(user.lastActive).getTime();
         if (!isNaN(lastActiveTime) && (Date.now() - lastActiveTime) < timeout) {
-          return res.status(400).json({ message: 'Account is already logged in on another device. Please logout first, or wait for inactivity timeout.' });
+          let requestToken = null;
+          if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+            requestToken = req.headers.authorization.split(' ')[1];
+          }
+          if (requestToken && requestToken === user.currentSessionToken) {
+            // Same session - bypass check
+          } else {
+            return res.status(400).json({ message: 'Account is already logged in on another device. Please logout first, or wait for inactivity timeout.' });
+          }
         }
       }
 
@@ -303,7 +311,15 @@ const googleLogin = async (req, res) => {
         const timeout = 5 * 60 * 1000; // 5 minutes
         const lastActiveTime = new Date(user.lastActive).getTime();
         if (!isNaN(lastActiveTime) && (Date.now() - lastActiveTime) < timeout) {
-          return res.status(400).json({ message: 'Account is already logged in on another device. Please logout first, or wait for inactivity timeout.' });
+          let requestToken = null;
+          if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+            requestToken = req.headers.authorization.split(' ')[1];
+          }
+          if (requestToken && requestToken === user.currentSessionToken) {
+            // Same session - bypass check
+          } else {
+            return res.status(400).json({ message: 'Account is already logged in on another device. Please logout first, or wait for inactivity timeout.' });
+          }
         }
       }
     }
@@ -375,7 +391,15 @@ const firebaseLogin = async (req, res) => {
         const timeout = 5 * 60 * 1000; // 5 minutes
         const lastActiveTime = new Date(user.lastActive).getTime();
         if (!isNaN(lastActiveTime) && (Date.now() - lastActiveTime) < timeout) {
-          return res.status(400).json({ message: 'Account is already logged in on another device. Please logout first, or wait for inactivity timeout.' });
+          let requestToken = null;
+          if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+            requestToken = req.headers.authorization.split(' ')[1];
+          }
+          if (requestToken && requestToken === user.currentSessionToken) {
+            // Same session - bypass check
+          } else {
+            return res.status(400).json({ message: 'Account is already logged in on another device. Please logout first, or wait for inactivity timeout.' });
+          }
         }
       }
     }

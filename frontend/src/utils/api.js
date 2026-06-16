@@ -90,7 +90,7 @@ export const api = {
     login: async (email, password) => {
       const res = await apiFetch(`/auth/login`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getHeaders(),
         body: JSON.stringify({ email, password }),
       });
       return handleResponse(res);
@@ -105,7 +105,7 @@ export const api = {
     googleLogin: async (credential) => {
       const res = await apiFetch(`/auth/google`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getHeaders(),
         body: JSON.stringify({ credential }),
       });
       return handleResponse(res);
@@ -113,7 +113,7 @@ export const api = {
     firebaseLogin: async (firebaseToken) => {
       const res = await apiFetch(`/auth/firebase-login`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getHeaders(),
         body: JSON.stringify({ firebaseToken }),
       });
       return handleResponse(res);
