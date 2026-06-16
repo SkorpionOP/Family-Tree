@@ -5,6 +5,8 @@ import ReactFlow, {
   useNodesState,
   useEdgesState,
   MarkerType,
+  ReactFlowProvider,
+  useReactFlow,
 } from 'reactflow';
 import dagre from 'dagre';
 import CustomNode from './CustomNode';
@@ -210,7 +212,7 @@ const getLayoutedElements = (nodes, edges, direction = 'TB') => {
   return { nodes: layoutedNodes, edges: layoutedEdges };
 };
 
-const Canvas = ({
+const CanvasComponent = ({
   rawNodes,
   rawEdges,
   userRole,
@@ -230,6 +232,7 @@ const Canvas = ({
 }) => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const { fitView } = useReactFlow();
 
   // Compute layout and prepare nodes/edges when raw data or configuration changes
   useEffect(() => {
@@ -242,6 +245,31 @@ const Canvas = ({
     // 1. Prepare React Flow edges
     const reactFlowEdges = rawEdges.map((edge) => {
       const isSpouse = edge.relationshipType === 'spouse';
+      const srcNode = rawNodes.find(n => n._id === edge.sourceNodeId);
+      const tgtNode = rawNodes.find(n => n._id === edge.targetNodeId);
+
+      let labelText = undefined;
+      let labelStyle = {};
+      let labelBgStyle = {};
+
+      if (isSpouse && srcNode && tgtNode) {
+        const mDateStr = srcNode.marriageDate || tgtNode.marriageDate;
+        if (mDateStr) {
+          const mDate = new Date(mDateStr);
+          const years = new Date().getFullYear() - mDate.getFullYear();
+          labelText = `❤️ ${years} yrs`;
+        } else {
+          labelText = '❤️ Spouse';
+        }
+        labelStyle = { fill: '#f43f5e', fontSize: 8, fontWeight: 700, fontFamily: 'system-ui, sans-serif' };
+        labelBgStyle = { fill: '#170f1e', fillOpacity: 0.9, stroke: '#f43f5e/20', strokeWidth: 1 };
+      } else if (!isSpouse && tgtNode) {
+        const isMaleChild = tgtNode.gender === 1;
+        labelText = isMaleChild ? 'Son' : 'Daughter';
+        labelStyle = { fill: '#10b981', fontSize: 7, fontWeight: 600, fontFamily: 'system-ui, sans-serif' };
+        labelBgStyle = { fill: '#061c15', fillOpacity: 0.9, stroke: '#10b981/20', strokeWidth: 1 };
+      }
+
       return {
         id: edge._id,
         source: edge.sourceNodeId,
@@ -251,6 +279,11 @@ const Canvas = ({
         animated: false,
         className: isSpouse ? 'spouse' : 'parent_child',
         data: { relationshipType: edge.relationshipType },
+        label: labelText,
+        labelStyle,
+        labelBgStyle,
+        labelBgPadding: [5, 3],
+        labelBgBorderRadius: 4,
         style: isSpouse 
           ? { stroke: '#fb7185', strokeWidth: 2, strokeDasharray: '8 5', opacity: 0.7 } 
           : { stroke: '#34d399', strokeWidth: 1.5, opacity: 0.6 },
@@ -312,6 +345,7 @@ const Canvas = ({
           dob: node.dob,
           bloodGroup: node.bloodGroup,
           gotram: node.gotram,
+          marriageDate: node.marriageDate,
           generationLevel: node.generationLevel,
           parity: node.parity,
           profilePictureUrl: node.profilePictureUrl,
@@ -356,6 +390,22 @@ const Canvas = ({
     setEdges
   ]);
 
+  // Track signature of rawNodes to trigger fitView only on initial load, structural updates, or layout changes
+  const lastSignatureRef = React.useRef('');
+
+  useEffect(() => {
+    if (rawNodes.length > 0) {
+      const currentSignature = `${rawNodes.map((n) => n._id).sort().join(',')}_${layoutDirection}`;
+      if (currentSignature !== lastSignatureRef.current) {
+        lastSignatureRef.current = currentSignature;
+        const timer = setTimeout(() => {
+          fitView({ padding: 0.08, duration: 400 });
+        }, 150);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [rawNodes, layoutDirection, fitView]);
+
   return (
     <div className="w-full h-full relative bg-surface-0">
       {/* Subtle radial glow behind the tree */}
@@ -371,9 +421,9 @@ const Canvas = ({
         nodeTypes={nodeTypes}
         onNodeClick={onNodeClick}
         fitView
-        fitViewOptions={{ padding: 0.2, maxZoom: 1.2 }}
-        minZoom={0.1}
-        maxZoom={2}
+        fitViewOptions={{ padding: 0.08 }}
+        minZoom={0.15}
+        maxZoom={1.5}
         proOptions={{ hideAttribution: true }}
       >
         <Controls 
@@ -390,5 +440,11 @@ const Canvas = ({
     </div>
   );
 };
+
+const Canvas = (props) => (
+  <ReactFlowProvider>
+    <CanvasComponent {...props} />
+  </ReactFlowProvider>
+);
 
 export default Canvas;
