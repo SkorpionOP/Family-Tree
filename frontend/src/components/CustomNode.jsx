@@ -91,7 +91,21 @@ const CustomNode = ({ data }) => {
   const canDelete = userRole === 'Admin';
 
   return (
-    <div className={`relative px-3 py-2 rounded-2xl bg-slate-900 border text-slate-100 min-w-[190px] shadow-xl backdrop-blur-md transition-all duration-300 ${containerClass} ${glowClass} ${isDeceased ? 'opacity-85' : ''}`}>
+    <div className={`relative px-3.5 py-2.5 rounded-2xl bg-slate-950/85 border text-slate-100 w-[220px] h-[95px] flex flex-col justify-between shadow-xl backdrop-blur-md transition-all duration-300 select-none ${containerClass} ${isDeceased ? 'opacity-75' : 'hover:scale-[1.02]'}`}>
+      
+      {/* Absolute Badge Indicators */}
+      <div className="absolute top-2.5 right-2.5 flex space-x-1 z-10">
+        {isDeceased && (
+          <span className="px-1 py-[0.5px] text-[6px] font-extrabold bg-slate-800/80 text-slate-400 rounded border border-slate-700/60 uppercase tracking-wider">
+            Dec.
+          </span>
+        )}
+        {data.isCurrentUser && (
+          <span className="px-1 py-[0.5px] text-[6px] font-extrabold bg-amber-500/20 text-amber-300 rounded border border-amber-500/35 uppercase tracking-wider">
+            You
+          </span>
+        )}
+      </div>
 
       {/* Handles for React Flow. Both source and target handles on all sides to allow flexible connections */}
       {/* Top Handle */}
@@ -109,38 +123,28 @@ const CustomNode = ({ data }) => {
       {/* Right Handle */}
       <Handle type="source" position={Position.Right} id="right-source" className="!bg-slate-500/60 !w-1.5 !h-1.5 !border-none" />
       <Handle type="target" position={Position.Right} id="right-target" className="!bg-slate-500/60 !w-1.5 !h-1.5 !opacity-0 !border-none" />
-
+ 
       {/* Main Info */}
-      <div className="flex items-center space-x-2.5">
+      <div className="flex items-center space-x-2.5 mt-0.5">
         {profilePictureUrl ? (
           <img
             src={profilePictureUrl}
             alt={name}
-            className={`w-10 h-10 rounded-full object-cover border-2 flex-shrink-0 cursor-pointer hover:scale-110 active:scale-95 transition-all duration-200 shadow-md ${isDeceased ? 'grayscale border-slate-600/40' : avatarBorder}`}
+            className={`w-9 h-9 rounded-full object-cover border-2 flex-shrink-0 cursor-pointer hover:scale-105 active:scale-95 transition-all duration-200 shadow-md ${isDeceased ? 'grayscale border-slate-600/40' : avatarBorder}`}
             onClick={(e) => {
               e.stopPropagation();
               if (onViewImage) onViewImage(profilePictureUrl);
             }}
           />
         ) : (
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center border flex-shrink-0 ${avatarBg} ${isDeceased ? 'grayscale' : ''}`}>
-            <User size={17} />
+          <div className={`w-9 h-9 rounded-full flex items-center justify-center border flex-shrink-0 ${avatarBg} ${isDeceased ? 'grayscale' : ''}`}>
+            <User size={15} />
           </div>
         )}
-
-        <div className="flex-1 min-w-0">
-          <h4 className="text-xs font-bold text-slate-100 truncate flex items-center gap-1.5">
-            <span className="truncate">{name}</span>
-            {isDeceased && (
-              <span className="px-1 py-[1px] text-[7px] font-extrabold bg-slate-700/60 text-slate-400 rounded border border-slate-600/50 flex-shrink-0">
-                Deceased
-              </span>
-            )}
-            {data.isCurrentUser && (
-              <span className="px-1 py-[1px] text-[7px] font-bold bg-amber-500/15 text-amber-300 rounded border border-amber-500/25 flex-shrink-0">
-                You
-              </span>
-            )}
+ 
+        <div className="flex-1 min-w-0 pr-4">
+          <h4 className="text-xs font-bold text-slate-100 truncate">
+            {name}
           </h4>
           <p className="text-[10px] text-slate-500 flex items-center space-x-1 mt-0.5">
             <span className={`${isMale ? 'text-blue-400/70' : 'text-pink-400/70'}`}>{isMale ? 'Male' : 'Female'}</span>
@@ -159,13 +163,16 @@ const CustomNode = ({ data }) => {
             e.stopPropagation();
             if (onViewCrossTree) onViewCrossTree(crossTreeLinkId);
           }}
-          className="mt-2.5 w-full py-1 text-[8px] font-bold bg-purple-950/40 text-purple-400 hover:bg-purple-950/60 border border-purple-500/20 hover:border-purple-500/40 rounded-lg flex items-center justify-center space-x-1 transition-all active:scale-95 cursor-pointer group"
+          className="w-full py-1 text-[8px] font-bold bg-purple-950/40 text-purple-400 hover:bg-purple-950/60 border border-purple-500/20 hover:border-purple-500/40 rounded-lg flex items-center justify-center space-x-1 transition-all active:scale-95 cursor-pointer group"
         >
           <Compass size={10} className="group-hover:rotate-45 transition-transform duration-300" />
           <span>Check Family Tree</span>
         </button>
       ) : (
-      <div className="h-[22px] flex-shrink-0" />
+        <div className="flex items-center justify-between text-[8px] text-slate-500/80 px-1 border-t border-slate-900/50 pt-1">
+          <span>{gotram ? `Gotram: ${gotram}` : ''}</span>
+          <span>{bloodGroup ? `Blood: ${bloodGroup}` : ''}</span>
+        </div>
       )}
     </div>
   );

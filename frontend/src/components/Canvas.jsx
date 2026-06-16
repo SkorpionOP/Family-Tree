@@ -245,6 +245,31 @@ const CanvasComponent = ({
     // 1. Prepare React Flow edges
     const reactFlowEdges = rawEdges.map((edge) => {
       const isSpouse = edge.relationshipType === 'spouse';
+      const srcNode = rawNodes.find(n => n._id === edge.sourceNodeId);
+      const tgtNode = rawNodes.find(n => n._id === edge.targetNodeId);
+
+      let labelText = undefined;
+      let labelStyle = {};
+      let labelBgStyle = {};
+
+      if (isSpouse && srcNode && tgtNode) {
+        const mDateStr = srcNode.marriageDate || tgtNode.marriageDate;
+        if (mDateStr) {
+          const mDate = new Date(mDateStr);
+          const years = new Date().getFullYear() - mDate.getFullYear();
+          labelText = `❤️ ${years} yrs`;
+        } else {
+          labelText = '❤️ Spouse';
+        }
+        labelStyle = { fill: '#f43f5e', fontSize: 8, fontWeight: 700, fontFamily: 'system-ui, sans-serif' };
+        labelBgStyle = { fill: '#170f1e', fillOpacity: 0.9, stroke: '#f43f5e/20', strokeWidth: 1 };
+      } else if (!isSpouse && tgtNode) {
+        const isMaleChild = tgtNode.gender === 1;
+        labelText = isMaleChild ? 'Son' : 'Daughter';
+        labelStyle = { fill: '#10b981', fontSize: 7, fontWeight: 600, fontFamily: 'system-ui, sans-serif' };
+        labelBgStyle = { fill: '#061c15', fillOpacity: 0.9, stroke: '#10b981/20', strokeWidth: 1 };
+      }
+
       return {
         id: edge._id,
         source: edge.sourceNodeId,
@@ -254,6 +279,11 @@ const CanvasComponent = ({
         animated: false,
         className: isSpouse ? 'spouse' : 'parent_child',
         data: { relationshipType: edge.relationshipType },
+        label: labelText,
+        labelStyle,
+        labelBgStyle,
+        labelBgPadding: [5, 3],
+        labelBgBorderRadius: 4,
         style: isSpouse 
           ? { stroke: '#fb7185', strokeWidth: 2, strokeDasharray: '8 5', opacity: 0.7 } 
           : { stroke: '#34d399', strokeWidth: 1.5, opacity: 0.6 },
@@ -315,6 +345,7 @@ const CanvasComponent = ({
           dob: node.dob,
           bloodGroup: node.bloodGroup,
           gotram: node.gotram,
+          marriageDate: node.marriageDate,
           generationLevel: node.generationLevel,
           parity: node.parity,
           profilePictureUrl: node.profilePictureUrl,
