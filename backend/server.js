@@ -50,13 +50,6 @@ const PORT = process.env.PORT || 5000;
 
 const server = app.listen(PORT, () => {
   console.log(`Backend server running on port ${PORT}`);
-
-  // Start Telegram Bot in long-polling mode (ideal for local development/testing)
-  const botToken = process.env.TELEGRAM_BOT_TOKEN;
-  if (botToken) {
-    const { startTelegramPolling } = require('./utils/telegramPolling');
-    startTelegramPolling(botToken);
-  }
 });
 
 // Graceful shutdown

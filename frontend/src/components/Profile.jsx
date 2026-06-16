@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../utils/api';
-import { Save, User, Calendar, Droplets, ShieldAlert, Phone, Link2, Image as ImageIcon, CheckCircle, RefreshCw, Mail } from 'lucide-react';
+import { Save, User, Calendar, Droplets, ShieldAlert, Phone, Link2, Image as ImageIcon, CheckCircle, RefreshCw, Mail, Camera, X } from 'lucide-react';
 import { auth, verifyBeforeUpdateEmail } from '../utils/firebase';
 
 const Profile = () => {
@@ -205,26 +205,26 @@ const Profile = () => {
   };
 
   return (
-    <div className="flex-1 bg-[#020617] p-6 md:p-10 overflow-y-auto text-slate-100 flex justify-center">
-      <div className="w-full max-w-4xl space-y-8 animate-fadeIn">
+    <div className="flex-1 bg-surface-0 p-6 md:p-10 overflow-y-auto text-slate-100 flex justify-center">
+      <div className="w-full max-w-4xl space-y-8 animate-fade-in">
         
         {/* Header */}
         <div>
-          <h2 className="text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
+          <h2 className="text-2xl md:text-3xl font-extrabold gradient-text-brand">
             Universal Account Profile
           </h2>
-          <p className="text-slate-400 text-sm mt-1">
-            Manage your personal credentials and select which details automatically paste to your assigned kinship node.
+          <p className="text-slate-400 text-sm mt-1.5 leading-relaxed">
+            Manage your personal credentials and select which details automatically sync to your assigned kinship node.
           </p>
         </div>
 
         {message.text && (
-          <div className={`p-4 rounded-xl border flex items-center space-x-3 ${
+          <div className={`p-4 rounded-xl border flex items-center space-x-3 animate-fade-in ${
             message.type === 'success' 
-              ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-300' 
-              : 'bg-red-950/40 border-red-500/30 text-red-300'
+              ? 'bg-emerald-500/8 border-emerald-500/20 text-emerald-300' 
+              : 'bg-red-500/8 border-red-500/20 text-red-300'
           }`}>
-            {message.type === 'success' ? <CheckCircle size={20} /> : <ShieldAlert size={20} />}
+            {message.type === 'success' ? <CheckCircle size={18} /> : <ShieldAlert size={18} />}
             <span className="text-sm font-medium">{message.text}</span>
           </div>
         )}
@@ -232,9 +232,9 @@ const Profile = () => {
         <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
           {/* Details Form (2 cols) */}
-          <div className="lg:col-span-2 bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6 md:p-8 space-y-6 backdrop-blur-md">
-            <h3 className="text-lg font-bold text-slate-200 border-b border-slate-800 pb-3 flex items-center space-x-2">
-              <User size={18} className="text-emerald-400" />
+          <div className="lg:col-span-2 card p-6 md:p-8 space-y-6">
+            <h3 className="text-base font-bold text-slate-200 border-b border-slate-700/30 pb-3 flex items-center space-x-2">
+              <User size={17} className="text-emerald-400" />
               <span>Personal Details</span>
             </h3>
 
@@ -244,13 +244,13 @@ const Profile = () => {
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-slate-400">Full Name</label>
                 <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-500"><User size={16} /></span>
+                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-500"><User size={15} /></span>
                   <input
                     type="text"
                     name="name"
                     value={formData.name}
                     onChange={handleChange}
-                    className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/50 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-100 placeholder-slate-650 focus:outline-none transition"
+                    className="input-field pl-10"
                     placeholder="Enter your name"
                   />
                 </div>
@@ -260,14 +260,14 @@ const Profile = () => {
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-slate-400">Date of Birth</label>
                 <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-500"><Calendar size={16} /></span>
+                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-500"><Calendar size={15} /></span>
                   <input
                     type="date"
                     name="dob"
                     value={formData.dob}
                     onChange={handleChange}
                     max={new Date().toISOString().split('T')[0]}
-                    className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/50 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-100 focus:outline-none transition"
+                    className="input-field pl-10"
                   />
                 </div>
               </div>
@@ -280,7 +280,7 @@ const Profile = () => {
                   name="gotram"
                   value={formData.gotram}
                   onChange={handleChange}
-                  className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/50 rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-650 focus:outline-none transition"
+                  className="input-field"
                   placeholder="e.g., Shiva"
                 />
               </div>
@@ -289,12 +289,12 @@ const Profile = () => {
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-slate-400">Blood Group</label>
                 <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-500"><Droplets size={16} /></span>
+                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-500"><Droplets size={15} /></span>
                   <select
                     name="bloodGroup"
                     value={formData.bloodGroup}
                     onChange={handleChange}
-                    className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/50 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-200 focus:outline-none transition cursor-pointer"
+                    className="input-field pl-10 cursor-pointer"
                   >
                     <option value="">Unknown</option>
                     {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(group => (
@@ -323,14 +323,14 @@ const Profile = () => {
                 <div className="flex space-x-2">
                   <div className="relative flex-1">
                     <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-500">
-                      <Mail size={16} />
+                      <Mail size={15} />
                     </span>
                     <input
                       type="email"
                       value={emailInput}
                       onChange={(e) => setEmailInput(e.target.value)}
                       disabled={!isEditingEmail}
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/50 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-100 placeholder-slate-650 focus:outline-none transition disabled:opacity-70 disabled:cursor-not-allowed"
+                      className="input-field pl-10 disabled:opacity-60 disabled:cursor-not-allowed"
                       placeholder="email@example.com"
                     />
                   </div>
@@ -338,7 +338,7 @@ const Profile = () => {
                     <button
                       type="button"
                       onClick={() => setIsEditingEmail(true)}
-                      className="bg-slate-950 border border-slate-800 hover:bg-slate-850 text-emerald-400 font-semibold text-xs px-4 py-2.5 rounded-xl transition cursor-pointer"
+                      className="btn-secondary text-xs font-semibold px-4 py-2.5 text-emerald-400"
                     >
                       Edit Email
                     </button>
@@ -348,7 +348,7 @@ const Profile = () => {
                         type="button"
                         onClick={handleSendEmailVerification}
                         disabled={sendingEmailVerification || emailInput === (user?.email || '')}
-                        className="bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 text-white font-semibold text-xs px-4 py-2.5 rounded-xl transition cursor-pointer"
+                        className="btn-primary text-xs font-semibold px-4 py-2.5"
                       >
                         {sendingEmailVerification ? 'Sending...' : 'Verify & Update'}
                       </button>
@@ -359,7 +359,7 @@ const Profile = () => {
                           setEmailInput(user?.email || '');
                           setEmailMessage(null);
                         }}
-                        className="bg-slate-950 border border-slate-800 hover:bg-slate-850 text-slate-400 font-semibold text-xs px-3 py-2.5 rounded-xl transition cursor-pointer"
+                        className="btn-ghost text-xs font-semibold px-3 py-2.5 text-slate-400"
                       >
                         Cancel
                       </button>
@@ -377,26 +377,26 @@ const Profile = () => {
               <div className="space-y-1.5 md:col-span-2">
                 <label className="text-xs font-semibold text-slate-400">Mobile Number</label>
                 <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-500"><Phone size={16} /></span>
+                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-500"><Phone size={15} /></span>
                   <input
                     type="tel"
                     name="mobileNumber"
                     value={formData.mobileNumber}
                     onChange={handleChange}
-                    className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/50 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-100 placeholder-slate-650 focus:outline-none transition"
+                    className="input-field pl-10"
                     placeholder="e.g. +919876543210"
                   />
                 </div>
               </div>
 
               {/* Profile Picture Upload & URL */}
-              <div className="space-y-3 md:col-span-2 border-t border-slate-800/80 pt-4 mt-2">
+              <div className="space-y-3 md:col-span-2 border-t border-slate-700/20 pt-5 mt-2">
                 <label className="text-xs font-semibold text-slate-400 block">Profile Picture</label>
                 <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-5">
                   {/* Avatar Circle */}
                   <div 
                     onClick={() => !uploadingPic && fileInputRef.current?.click()}
-                    className="w-20 h-20 rounded-full border border-slate-850 bg-slate-950 flex items-center justify-center overflow-hidden relative group cursor-pointer shadow-inner"
+                    className="w-20 h-20 rounded-2xl border border-slate-700/30 bg-surface-1 flex items-center justify-center overflow-hidden relative group cursor-pointer shadow-inner transition-all hover:border-emerald-500/30"
                   >
                     {formData.profilePictureUrl ? (
                       <img 
@@ -405,10 +405,10 @@ const Profile = () => {
                         className="w-full h-full object-cover" 
                       />
                     ) : (
-                      <User size={32} className="text-slate-550" />
+                      <User size={28} className="text-slate-600" />
                     )}
-                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition duration-200">
-                      <span className="text-[10px] text-slate-200 font-bold text-center px-1">Upload</span>
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition duration-200 rounded-2xl">
+                      <Camera size={18} className="text-slate-200" />
                     </div>
                   </div>
 
@@ -426,7 +426,7 @@ const Profile = () => {
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={uploadingPic}
-                        className="bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-855 text-white font-semibold text-xs px-4 py-2 rounded-xl transition cursor-pointer flex items-center space-x-1.5"
+                        className="btn-primary text-xs px-4 py-2 flex items-center space-x-1.5"
                       >
                         {uploadingPic ? (
                           <>
@@ -444,7 +444,7 @@ const Profile = () => {
                         <button
                           type="button"
                           onClick={handleRemovePic}
-                          className="bg-slate-950 border border-slate-850 hover:bg-red-500/10 hover:text-red-400 text-slate-400 font-semibold text-xs px-4 py-2 rounded-xl transition cursor-pointer"
+                          className="btn-danger text-xs px-4 py-2"
                         >
                           Remove Photo
                         </button>
@@ -455,13 +455,13 @@ const Profile = () => {
                     <div className="space-y-1">
                       <span className="text-[10px] text-slate-500">Or paste an image URL:</span>
                       <div className="relative">
-                        <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-650"><Link2 size={12} /></span>
+                        <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-600"><Link2 size={12} /></span>
                         <input
                           type="url"
                           name="profilePictureUrl"
                           value={formData.profilePictureUrl}
                           onChange={handleChange}
-                          className="w-full bg-slate-950 border border-slate-850 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/50 rounded-xl pl-8 pr-4 py-1.5 text-xs text-slate-200 placeholder-slate-600 focus:outline-none transition"
+                          className="input-field pl-8 text-xs py-1.5"
                           placeholder="https://image-url.com/profile.jpg"
                         />
                       </div>
@@ -474,15 +474,15 @@ const Profile = () => {
 
             {/* Social Links */}
             <div className="space-y-3 pt-2">
-              <div className="flex items-center justify-between border-t border-slate-800/80 pt-4">
-                <label className="text-xs font-semibold text-slate-400 flex items-center space-x-1">
+              <div className="flex items-center justify-between border-t border-slate-700/20 pt-5">
+                <label className="text-xs font-semibold text-slate-400 flex items-center space-x-1.5">
                   <Link2 size={14} className="text-emerald-400" />
                   <span>Social Profiles / Links</span>
                 </label>
                 <button
                   type="button"
                   onClick={addSocialLink}
-                  className="text-xs text-emerald-400 hover:text-emerald-350 cursor-pointer font-medium"
+                  className="text-xs text-emerald-400 hover:text-emerald-300 cursor-pointer font-semibold transition-colors"
                 >
                   + Add Link
                 </button>
@@ -495,15 +495,15 @@ const Profile = () => {
                       type="url"
                       value={link}
                       onChange={(e) => handleSocialLinkChange(idx, e.target.value)}
-                      className="flex-1 bg-slate-950 border border-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/50 rounded-xl px-4 py-2 text-sm text-slate-100 placeholder-slate-650 focus:outline-none transition"
+                      className="input-field text-sm py-2"
                       placeholder="https://linkedin.com/in/username"
                     />
                     <button
                       type="button"
                       onClick={() => removeSocialLink(idx)}
-                      className="text-xs text-slate-500 hover:text-red-400 p-2 border border-slate-800 rounded-xl hover:bg-red-500/10 transition cursor-pointer"
+                      className="text-slate-500 hover:text-red-400 p-2 border border-slate-700/30 rounded-xl hover:bg-red-500/10 transition cursor-pointer"
                     >
-                      Delete
+                      <X size={14} />
                     </button>
                   </div>
                 ))}
@@ -511,31 +511,31 @@ const Profile = () => {
             </div>
 
             {/* Submit Button */}
-            <div className="flex justify-end pt-4 border-t border-slate-800">
+            <div className="flex justify-end pt-5 border-t border-slate-700/20">
               <button
                 type="submit"
                 disabled={loading}
-                className="flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 text-white font-semibold rounded-xl px-6 py-2.5 transition active:scale-95 cursor-pointer shadow-lg hover:shadow-emerald-600/20"
+                className="btn-primary flex items-center space-x-2 px-6 py-2.5 text-sm shadow-glow-sm hover:shadow-glow-md"
               >
-                {loading ? <RefreshCw className="animate-spin" size={16} /> : <Save size={16} />}
+                {loading ? <RefreshCw className="animate-spin" size={15} /> : <Save size={15} />}
                 <span>{loading ? 'Saving Changes...' : 'Save Profile Details'}</span>
               </button>
             </div>
           </div>
 
           {/* Sync Settings Panel (1 col) */}
-          <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6 backdrop-blur-md h-fit space-y-6">
+          <div className="card p-6 h-fit space-y-6">
             <div>
-              <h3 className="text-lg font-bold text-slate-200 border-b border-slate-800 pb-3 flex items-center space-x-2">
-                <RefreshCw size={18} className="text-emerald-400" />
+              <h3 className="text-base font-bold text-slate-200 border-b border-slate-700/30 pb-3 flex items-center space-x-2">
+                <RefreshCw size={17} className="text-emerald-400" />
                 <span>Sync Preferences</span>
               </h3>
-              <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+              <p className="text-xs text-slate-400 mt-3 leading-relaxed">
                 Check the fields below to allow them to automatically copy and sync to your assigned family tree node. Unchecked fields will remain hidden/blank on the node.
               </p>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-2.5">
               {[
                 { field: 'name', label: 'Sync Name' },
                 { field: 'dob', label: 'Sync Date of Birth' },
@@ -550,8 +550,8 @@ const Profile = () => {
                 return (
                   <label 
                     key={field} 
-                    className={`flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-850 hover:border-slate-800 transition select-none ${
-                      isBlocked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                    className={`flex items-center justify-between p-3 rounded-xl bg-surface-1/60 border border-slate-700/20 hover:border-slate-600/30 transition-all select-none ${
+                      isBlocked ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'
                     }`}
                   >
                     <div className="flex flex-col">
@@ -560,23 +560,34 @@ const Profile = () => {
                         <span className="text-[9px] text-amber-500 font-semibold mt-0.5">Requires verification</span>
                       )}
                     </div>
-                    <input
-                      type="checkbox"
-                      disabled={isBlocked}
-                      checked={isBlocked ? false : syncSettings[field]}
-                      onChange={() => !isBlocked && handleSyncToggle(field)}
-                      className={`w-4 h-4 rounded text-emerald-500 bg-slate-900 border-slate-800 focus:ring-emerald-500 focus:ring-offset-slate-950 focus:ring-2 ${
-                        isBlocked ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
-                      }`}
-                    />
+                    <div className="relative">
+                      <input
+                        type="checkbox"
+                        disabled={isBlocked}
+                        checked={isBlocked ? false : syncSettings[field]}
+                        onChange={() => !isBlocked && handleSyncToggle(field)}
+                        className="sr-only peer"
+                      />
+                      <div className={`w-9 h-5 rounded-full transition-colors duration-200 ${
+                        (isBlocked ? false : syncSettings[field])
+                          ? 'bg-emerald-500'
+                          : 'bg-slate-700'
+                      }`}>
+                        <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-md transition-transform duration-200 ${
+                          (isBlocked ? false : syncSettings[field])
+                            ? 'translate-x-4'
+                            : 'translate-x-0'
+                        }`} />
+                      </div>
+                    </div>
                   </label>
                 );
               })}
             </div>
 
-            <div className="p-4 bg-emerald-950/20 border border-emerald-500/20 rounded-xl space-y-1">
-              <span className="text-xs font-bold text-emerald-400 block">How syncing works:</span>
-              <p className="text-[10px] text-emerald-500 leading-normal">
+            <div className="p-4 bg-emerald-500/5 border border-emerald-500/15 rounded-xl space-y-1.5">
+              <span className="text-xs font-bold text-emerald-400 block">How syncing works</span>
+              <p className="text-[11px] text-emerald-500/80 leading-relaxed">
                 Whenever you join a tree and get assigned a node, or whenever you modify this profile, checked details will be copied directly to the tree node.
               </p>
             </div>

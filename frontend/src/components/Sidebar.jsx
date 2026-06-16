@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, X, User, Heart, Compass, Smartphone, Calendar, Link as LinkIcon, Compass as CompassIcon, RefreshCw, Layers, GitBranch, Plus, Shield, LogOut, Trash2, Gift, Bell } from 'lucide-react';
+import { Search, Filter, X, User, Heart, Compass, Smartphone, Calendar, Link as LinkIcon, Compass as CompassIcon, RefreshCw, Layers, GitBranch, Plus, Shield, LogOut, Trash2 } from 'lucide-react';
 
 const Sidebar = ({
   nodes,
@@ -15,7 +15,7 @@ const Sidebar = ({
   onCheckRelation,
   relationResult,
   loadingRelation,
-  
+
   // Mobile-only props
   trees = [],
   activeTreeId,
@@ -44,6 +44,7 @@ const Sidebar = ({
 }) => {
   const [showFilters, setShowFilters] = useState(false);
   const [activeTab, setActiveTab] = useState('members'); // 'members' | 'history'
+  const [copiedId, setCopiedId] = useState(false);
 
   useEffect(() => {
     if (activeTab === 'history' && fetchLogs) {
@@ -78,33 +79,39 @@ const Sidebar = ({
     });
   };
 
+  const handleCopyId = (id) => {
+    navigator.clipboard.writeText(id);
+    setCopiedId(true);
+    setTimeout(() => setCopiedId(false), 2000);
+  };
+
   const activeTree = trees.find((t) => t._id === activeTreeId);
   const unreadCount = notifications ? notifications.filter(n => !n.isRead).length : 0;
 
   return (
-    <div className="w-full md:w-80 bg-slate-950/95 border-r border-slate-900/50 flex flex-col h-full text-slate-200 overflow-y-auto border-r-slate-800/40 shadow-xl">
-      
+    <div className="w-full md:w-80 glass-heavy border-r border-slate-700/20 flex flex-col h-full text-slate-200 overflow-y-auto shadow-2xl">
+
       {/* Mobile-only Tree Selector & Actions */}
-      <div className="md:hidden p-4 border-b border-slate-900/80 bg-slate-950/40 space-y-3">
+      <div className="md:hidden p-4 border-b border-slate-700/20 bg-surface-1/40 space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Active Family Tree</span>
+          <span className="section-label">Active Family Tree</span>
           {logout && (
             <button
               onClick={logout}
-              className="text-slate-400 hover:text-red-400 p-1.5 bg-slate-900 border border-slate-800 rounded-lg flex items-center justify-center transition-all cursor-pointer active:scale-95"
+              className="text-slate-400 hover:text-red-400 p-1.5 bg-slate-800/30 border border-slate-700/20 rounded-lg flex items-center justify-center transition-all cursor-pointer active:scale-95"
               title="Log Out"
             >
               <LogOut size={12} />
             </button>
           )}
         </div>
-        
+
         <div className="flex items-center space-x-2">
-          <GitBranch size={14} className="text-slate-500" />
+          <GitBranch size={13} className="text-slate-500 flex-shrink-0" />
           <select
             value={activeTreeId || ''}
             onChange={(e) => onSelectTree(e.target.value)}
-            className="flex-1 bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded-xl px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 cursor-pointer"
+            className="flex-1 bg-surface-1 border border-slate-700/30 text-slate-200 text-xs rounded-xl px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 cursor-pointer"
           >
             <option value="" disabled>Select Family Tree</option>
             {trees.map((t) => (
@@ -118,7 +125,7 @@ const Sidebar = ({
         <div className="grid grid-cols-2 gap-2">
           <button
             onClick={onCreateTree}
-            className="flex items-center justify-center space-x-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-xl py-2 transition-all active:scale-95 cursor-pointer"
+            className="btn-primary flex items-center justify-center space-x-1.5 text-xs py-2"
           >
             <Plus size={12} />
             <span>New Tree</span>
@@ -126,16 +133,16 @@ const Sidebar = ({
 
           <button
             onClick={onJoinTree}
-            className="flex items-center justify-center space-x-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 font-semibold text-xs rounded-xl py-2 transition-all active:scale-95 cursor-pointer"
+            className="btn-secondary flex items-center justify-center space-x-1.5 text-xs py-2"
           >
             <GitBranch size={12} className="text-emerald-400" />
             <span>Join Tree</span>
           </button>
-          
+
           {activeTree && (userRole === 'Admin' || userRole === 'Sub-Admin') && (
             <button
               onClick={onAddNode}
-              className="col-span-2 flex items-center justify-center space-x-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-xl py-2 transition-all active:scale-95 cursor-pointer animate-in fade-in"
+              className="btn-primary col-span-2 flex items-center justify-center space-x-1.5 text-xs py-2 animate-fade-in"
             >
               <Plus size={12} />
               <span>Add Member Node</span>
@@ -146,14 +153,14 @@ const Sidebar = ({
             <>
               <button
                 onClick={onOpenManageRoles}
-                className="col-span-2 flex items-center justify-center space-x-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 font-semibold text-xs rounded-xl py-2 transition-all active:scale-95 cursor-pointer"
+                className="btn-secondary col-span-2 flex items-center justify-center space-x-1.5 text-xs py-2"
               >
                 <Shield size={12} className="text-emerald-400" />
                 <span>Access Roles</span>
               </button>
               <button
                 onClick={onDeleteTree}
-                className="col-span-2 flex items-center justify-center space-x-1.5 bg-red-950/40 hover:bg-red-900 border border-red-500/30 hover:border-red-500/50 text-red-400 hover:text-white font-semibold text-xs rounded-xl py-2 transition-all active:scale-95 cursor-pointer"
+                className="btn-danger col-span-2 flex items-center justify-center space-x-1.5 text-xs py-2"
               >
                 <Trash2 size={12} />
                 <span>Delete Family Tree</span>
@@ -162,36 +169,33 @@ const Sidebar = ({
           )}
         </div>
       </div>
-      
+
       {/* Tabs */}
-      <div className="flex border-b border-slate-900 flex-shrink-0">
+      <div className="flex border-b border-slate-700/20 flex-shrink-0">
         <button
           onClick={() => setActiveTab('members')}
-          className={`flex-1 py-3 text-xs font-bold border-b-2 transition-colors cursor-pointer ${
-            activeTab === 'members'
-              ? 'border-emerald-500 text-slate-200 bg-emerald-950/10'
-              : 'border-transparent text-slate-500 hover:text-slate-350 hover:bg-slate-900/20'
-          }`}
+          className={`flex-1 py-3 text-[11px] font-bold border-b-2 transition-all duration-300 cursor-pointer ${activeTab === 'members'
+              ? 'border-emerald-500 text-slate-200 bg-emerald-500/5'
+              : 'border-transparent text-slate-500 hover:text-slate-300 hover:bg-slate-800/20'
+            }`}
         >
           Members
         </button>
         <button
           onClick={() => setActiveTab('history')}
-          className={`flex-1 py-3 text-xs font-bold border-b-2 transition-colors cursor-pointer ${
-            activeTab === 'history'
-              ? 'border-emerald-500 text-slate-200 bg-emerald-950/10'
-              : 'border-transparent text-slate-500 hover:text-slate-350 hover:bg-slate-900/20'
-          }`}
+          className={`flex-1 py-3 text-[11px] font-bold border-b-2 transition-all duration-300 cursor-pointer ${activeTab === 'history'
+              ? 'border-emerald-500 text-slate-200 bg-emerald-500/5'
+              : 'border-transparent text-slate-500 hover:text-slate-300 hover:bg-slate-800/20'
+            }`}
         >
           History
         </button>
         <button
           onClick={() => setActiveTab('notifications')}
-          className={`flex-1 py-3 text-xs font-bold border-b-2 transition-colors cursor-pointer relative ${
-            activeTab === 'notifications'
+          className={`flex-1 py-3 text-xs font-bold border-b-2 transition-colors cursor-pointer relative ${activeTab === 'notifications'
               ? 'border-emerald-500 text-slate-200 bg-emerald-950/10'
               : 'border-transparent text-slate-500 hover:text-slate-350 hover:bg-slate-900/20'
-          }`}
+            }`}
         >
           <span>Notifications</span>
           {unreadCount > 0 && (
@@ -205,20 +209,20 @@ const Sidebar = ({
       {activeTab === 'members' && (
         <>
           {/* 1. SEARCH & FILTERS SECTION */}
-          <div className="p-4 border-b border-slate-900 space-y-3">
-            <div className="relative">
-              <Search size={16} className="absolute left-3 top-3 text-slate-500" />
+          <div className="p-4 border-b border-slate-700/20 space-y-3">
+            <div className="relative group">
+              <Search size={15} className="absolute left-3.5 top-[11px] text-slate-500 group-focus-within:text-emerald-400 transition-colors" />
               <input
                 type="text"
                 placeholder="Search family members..."
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                className="input-field pl-10 pr-8 py-2.5 text-xs"
               />
               {searchQuery && (
-                <button 
+                <button
                   onClick={() => onSearchChange('')}
-                  className="absolute right-3 top-3.5 text-slate-500 hover:text-slate-300"
+                  className="absolute right-3 top-3 text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
                 >
                   <X size={12} />
                 </button>
@@ -228,20 +232,22 @@ const Sidebar = ({
             <div className="flex items-center justify-between">
               <button
                 onClick={() => setShowFilters(!showFilters)}
-                className={`flex items-center space-x-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors ${
-                  showFilters || Object.values(filters).some(Boolean)
-                    ? 'bg-emerald-950/40 text-emerald-400 border-emerald-500/30'
-                    : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
-                }`}
+                className={`flex items-center space-x-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-lg border transition-all duration-200 cursor-pointer ${showFilters || Object.values(filters).some(Boolean)
+                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                    : 'bg-slate-800/30 border-slate-700/30 text-slate-400 hover:text-slate-200 hover:border-slate-600/40'
+                  }`}
               >
-                <Filter size={12} />
+                <Filter size={11} />
                 <span>Filters</span>
+                {Object.values(filters).some(Boolean) && (
+                  <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
+                )}
               </button>
 
               {Object.values(filters).some(Boolean) && (
                 <button
                   onClick={onResetFilters}
-                  className="text-xs text-red-400 hover:text-red-300 flex items-center space-x-1"
+                  className="text-[11px] text-red-400 hover:text-red-300 flex items-center space-x-1 transition-colors cursor-pointer"
                 >
                   <RefreshCw size={10} />
                   <span>Reset</span>
@@ -251,14 +257,14 @@ const Sidebar = ({
 
             {/* Filter Details Accordion */}
             {showFilters && (
-              <div className="bg-slate-900/50 border border-slate-900 p-3 rounded-xl space-y-3.5 animate-in fade-in slide-in-from-top-2 duration-150">
+              <div className="bg-surface-1/60 border border-slate-700/20 p-3.5 rounded-xl space-y-3 animate-fade-in-down">
                 {/* Gotram Filter */}
                 <div>
-                  <label className="text-[10px] text-slate-500 uppercase font-bold tracking-wider block mb-1">Gotram</label>
+                  <label className="section-label block mb-1.5">Gotram</label>
                   <select
                     value={filters.gotram}
                     onChange={(e) => onFilterChange('gotram', e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-800 text-xs text-slate-300 rounded-lg px-2 py-1.5 focus:outline-none"
+                    className="input-field text-xs py-1.5 cursor-pointer"
                   >
                     <option value="">All Gotrams</option>
                     {uniqueGotrams.map(g => (
@@ -269,11 +275,11 @@ const Sidebar = ({
 
                 {/* Blood Group Filter */}
                 <div>
-                  <label className="text-[10px] text-slate-500 uppercase font-bold tracking-wider block mb-1">Blood Group</label>
+                  <label className="section-label block mb-1.5">Blood Group</label>
                   <select
                     value={filters.bloodGroup}
                     onChange={(e) => onFilterChange('bloodGroup', e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-800 text-xs text-slate-300 rounded-lg px-2 py-1.5 focus:outline-none"
+                    className="input-field text-xs py-1.5 cursor-pointer"
                   >
                     <option value="">All Blood Groups</option>
                     {uniqueBloodGroups.map(bg => (
@@ -284,11 +290,11 @@ const Sidebar = ({
 
                 {/* Generation Level Filter */}
                 <div>
-                  <label className="text-[10px] text-slate-500 uppercase font-bold tracking-wider block mb-1">Generation Level</label>
+                  <label className="section-label block mb-1.5">Generation Level</label>
                   <select
                     value={filters.generationLevel}
                     onChange={(e) => onFilterChange('generationLevel', e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-800 text-xs text-slate-300 rounded-lg px-2 py-1.5 focus:outline-none"
+                    className="input-field text-xs py-1.5 cursor-pointer"
                   >
                     <option value="">All Generations</option>
                     {uniqueGenerations.map(gen => (
@@ -302,61 +308,58 @@ const Sidebar = ({
 
           {/* 2. TREE INFORMATION SECTION */}
           {activeTree && (
-            <div className="p-4 border-b border-slate-900 space-y-3.5 bg-slate-950/20 animate-in fade-in duration-200">
+            <div className="p-4 border-b border-slate-700/20 space-y-3 bg-surface-1/20 animate-fade-in">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Tree Information</span>
-                <span className={`px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded border ${
-                  userRole === 'Admin' 
-                    ? 'bg-red-500/10 border-red-500/30 text-red-400' 
+                <span className="section-label">Tree Information</span>
+                <span className={`badge ${userRole === 'Admin'
+                    ? 'badge-admin'
                     : userRole === 'Sub-Admin'
-                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
-                    : 'bg-blue-500/10 border-blue-500/30 text-blue-400'
-                }`}>
+                      ? 'badge-subadmin'
+                      : 'badge-standard'
+                  }`}>
                   {userRole || 'Viewer'}
                 </span>
               </div>
 
-              <div className="space-y-2.5 text-xs">
+              <div className="space-y-3 text-xs">
                 <div>
-                  <span className="text-[10px] text-slate-500 block leading-none font-semibold">Tree Name</span>
-                  <span className="text-slate-200 block mt-1 font-bold">{activeTree.treeName}</span>
+                  <span className="section-label block mb-0.5">Tree Name</span>
+                  <span className="text-slate-200 block font-bold text-sm">{activeTree.treeName}</span>
                 </div>
 
                 <div>
-                  <span className="text-[10px] text-slate-500 block leading-none font-semibold mb-1">Tree ID</span>
-                  <div className="flex items-center space-x-1 bg-slate-950/60 p-2 rounded-xl border border-slate-850">
+                  <span className="section-label block mb-1">Tree ID</span>
+                  <div className="flex items-center space-x-1.5 bg-surface-1/60 p-2 rounded-xl border border-slate-700/20">
                     <span className="font-mono text-[10px] text-slate-400 truncate flex-1 select-all">{activeTree._id}</span>
                     <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(activeTree._id);
-                        alert('Tree ID copied to clipboard!');
-                      }}
-                      className="px-1.5 py-0.5 bg-slate-900 border border-slate-800 text-[9px] text-emerald-400 font-bold rounded hover:bg-slate-850 active:scale-95 cursor-pointer transition-colors"
+                      onClick={() => handleCopyId(activeTree._id)}
+                      className="flex items-center space-x-1 px-2 py-0.5 bg-slate-800/50 border border-slate-700/30 text-[9px] text-emerald-400 font-bold rounded-lg hover:bg-slate-700/50 active:scale-95 cursor-pointer transition-all"
                     >
-                      Copy
+                      {copiedId ? <Check size={9} /> : <Copy size={9} />}
+                      <span>{copiedId ? 'Copied' : 'Copy'}</span>
                     </button>
                   </div>
                 </div>
 
                 <div>
-                  <span className="text-[10px] text-slate-500 block leading-none font-semibold">Creator</span>
-                  <span className="text-slate-355 block mt-0.5 truncate" title={activeTree.createdBy?.email || 'N/A'}>
+                  <span className="section-label block mb-0.5">Creator</span>
+                  <span className="text-slate-400 block truncate" title={activeTree.createdBy?.email || 'N/A'}>
                     {activeTree.createdBy?.email || 'N/A'}
                   </span>
                 </div>
 
                 {activeTree.admins && activeTree.admins.length > 0 && (
                   <div>
-                    <span className="text-[10px] text-slate-500 block leading-none font-semibold">Admins</span>
-                    <span className="text-slate-355 block mt-0.5 truncate" title={activeTree.admins.map(a => a.email).join(', ')}>
+                    <span className="section-label block mb-0.5">Admins</span>
+                    <span className="text-slate-400 block truncate" title={activeTree.admins.map(a => a.email).join(', ')}>
                       {activeTree.admins.map(a => a.email).join(', ')}
                     </span>
                   </div>
                 )}
 
                 <div>
-                  <span className="text-[10px] text-slate-500 block leading-none font-semibold">Created At</span>
-                  <span className="text-slate-355 block mt-0.5">
+                  <span className="section-label block mb-0.5">Created At</span>
+                  <span className="text-slate-400 block">
                     {activeTree.createdAt ? new Date(activeTree.createdAt).toLocaleDateString(undefined, {
                       year: 'numeric',
                       month: 'short',
@@ -366,11 +369,11 @@ const Sidebar = ({
                 </div>
 
                 {userRole === 'Admin' && pendingRequestsCount > 0 && (
-                  <div className="bg-emerald-950/20 border border-emerald-500/20 p-2.5 rounded-xl flex items-center justify-between text-xs text-emerald-400 mt-3 animate-pulse">
+                  <div className="bg-emerald-500/8 border border-emerald-500/15 p-3 rounded-xl flex items-center justify-between text-xs text-emerald-400 mt-2 animate-pulse">
                     <span className="font-semibold">{pendingRequestsCount} Pending Request(s)</span>
                     <button
                       onClick={onOpenManageRoles}
-                      className="px-2 py-1 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 text-[10px] font-bold active:scale-95 cursor-pointer transition-colors"
+                      className="px-2.5 py-1 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 text-[10px] font-bold active:scale-95 cursor-pointer transition-colors"
                     >
                       Review
                     </button>
@@ -378,10 +381,10 @@ const Sidebar = ({
                 )}
 
                 {userRole === 'Admin' && (
-                  <div className="pt-2 border-t border-slate-900/60 mt-3 flex justify-end">
+                  <div className="pt-2.5 border-t border-slate-700/20 mt-2 flex justify-end">
                     <button
                       onClick={onDeleteTree}
-                      className="flex items-center space-x-1.5 bg-red-950/30 hover:bg-red-900/50 border border-red-500/20 hover:border-red-500/40 text-red-400 hover:text-red-300 text-[11px] font-bold px-3 py-2 rounded-xl transition-all duration-300 active:scale-95 cursor-pointer"
+                      className="btn-danger flex items-center space-x-1.5 text-[11px] font-bold px-3 py-2"
                     >
                       <Trash2 size={12} />
                       <span>Delete Family Tree</span>
@@ -396,44 +399,49 @@ const Sidebar = ({
 
       {activeTab === 'history' && (
         <div className="flex-1 flex flex-col min-h-0">
-          <div className="p-4 border-b border-slate-900 flex items-center justify-between flex-shrink-0">
-            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Activity History</span>
+          <div className="p-4 border-b border-slate-700/20 flex items-center justify-between flex-shrink-0">
+            <span className="section-label">Activity History</span>
             <button
               onClick={fetchLogs}
               disabled={loadingLogs}
-              className="text-xs text-emerald-400 hover:text-emerald-300 font-semibold flex items-center space-x-1 cursor-pointer disabled:opacity-50"
+              className="text-[11px] text-emerald-400 hover:text-emerald-300 font-semibold flex items-center space-x-1 cursor-pointer disabled:opacity-50 transition-colors"
             >
               <RefreshCw size={10} className={loadingLogs ? 'animate-spin' : ''} />
               <span>Refresh</span>
             </button>
           </div>
 
-          <div className="p-4 space-y-3 overflow-y-auto flex-1 custom-scrollbar">
+          <div className="p-4 space-y-2.5 overflow-y-auto flex-1 custom-scrollbar">
             {loadingLogs ? (
-              <div className="text-center py-8 text-xs text-slate-500">Loading activity history...</div>
+              <div className="text-center py-12 space-y-3">
+                <RefreshCw size={20} className="animate-spin text-slate-600 mx-auto" />
+                <p className="text-xs text-slate-500">Loading activity history...</p>
+              </div>
             ) : !logs || logs.length === 0 ? (
-              <div className="text-center py-8 text-xs text-slate-500">No activity logs recorded yet.</div>
+              <div className="text-center py-12 space-y-2">
+                <Layers size={24} className="text-slate-700 mx-auto" />
+                <p className="text-xs text-slate-500">No activity logs recorded yet.</p>
+              </div>
             ) : (
               logs.map((log) => {
                 const canRevert = (userRole === 'Admin' || userRole === 'Sub-Admin') && !log.isReverted;
                 return (
-                  <div 
-                    key={log._id} 
-                    className={`p-3 rounded-xl border text-xs space-y-2 transition-all ${
-                      log.isReverted 
-                        ? 'bg-slate-950/30 border-slate-900/40 opacity-60' 
-                        : 'bg-slate-900 border-slate-850 hover:border-slate-800'
-                    }`}
+                  <div
+                    key={log._id}
+                    className={`p-3 rounded-xl border text-xs space-y-2 transition-all duration-200 ${log.isReverted
+                        ? 'bg-surface-1/20 border-slate-800/30 opacity-50'
+                        : 'bg-slate-800/20 border-slate-700/20 hover:border-slate-600/30'
+                      }`}
                   >
                     <div className="flex items-start justify-between space-x-2">
                       <p className="font-semibold text-slate-200 leading-snug">{log.description}</p>
                       {log.isReverted && (
-                        <span className="px-1.5 py-0.5 text-[8px] font-extrabold bg-slate-800 text-slate-400 rounded uppercase tracking-wider flex-shrink-0">
+                        <span className="badge bg-slate-800/60 border-slate-700/30 text-slate-500 flex-shrink-0">
                           Reverted
                         </span>
                       )}
                     </div>
-                    
+
                     <div className="flex items-center justify-between text-[10px] text-slate-500">
                       <span>By: {log.userName}</span>
                       <span>{new Date(log.createdAt).toLocaleDateString(undefined, {
@@ -447,7 +455,7 @@ const Sidebar = ({
                     {canRevert && onRevertLog && (
                       <button
                         onClick={() => onRevertLog(log._id)}
-                        className="w-full py-1.5 bg-red-950/30 hover:bg-red-900/50 border border-red-500/20 hover:border-red-500/40 text-red-400 hover:text-red-300 rounded-lg text-[10px] font-bold transition-all active:scale-95 cursor-pointer mt-1"
+                        className="btn-danger w-full py-1.5 text-[10px] font-bold mt-1"
                       >
                         Revert Change
                       </button>
@@ -487,7 +495,7 @@ const Sidebar = ({
               notifications.map((notif) => {
                 const isAnniversary = notif.type === 'anniversary';
                 const isBirthday = notif.type === 'birthday';
-                
+
                 const eventDateFormatted = new Date(notif.eventDate).toLocaleDateString(undefined, {
                   month: 'short',
                   day: 'numeric'
@@ -497,24 +505,22 @@ const Sidebar = ({
                   <div
                     key={notif._id}
                     onClick={() => onNotificationClick && onNotificationClick(notif)}
-                    className={`p-3 rounded-xl border text-xs flex items-start space-x-3 transition-all cursor-pointer relative ${
-                      notif.isRead
+                    className={`p-3 rounded-xl border text-xs flex items-start space-x-3 transition-all cursor-pointer relative ${notif.isRead
                         ? 'bg-slate-950/20 border-slate-900/60 opacity-70 hover:opacity-100 hover:border-slate-800'
                         : 'bg-slate-900 border-slate-800 hover:border-emerald-500/30 shadow-md shadow-slate-950/20'
-                    }`}
+                      }`}
                   >
                     {!notif.isRead && (
                       <span className="absolute top-3.5 right-3.5 w-1.5 h-1.5 rounded-full bg-emerald-500" />
                     )}
 
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                      isBirthday ? 'bg-emerald-500/10 text-emerald-400' :
-                      isAnniversary ? 'bg-pink-500/10 text-pink-400' :
-                      'bg-rose-500/10 text-rose-400'
-                    }`}>
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${isBirthday ? 'bg-emerald-500/10 text-emerald-400' :
+                        isAnniversary ? 'bg-pink-500/10 text-pink-400' :
+                          'bg-rose-500/10 text-rose-400'
+                      }`}>
                       {isBirthday ? <Gift size={16} /> :
-                       isAnniversary ? <Heart size={16} /> :
-                       <Shield size={16} />}
+                        isAnniversary ? <Heart size={16} /> :
+                          <Shield size={16} />}
                     </div>
 
                     <div className="flex-1 min-w-0 pr-2">
@@ -522,7 +528,7 @@ const Sidebar = ({
                         <span className="font-semibold text-slate-200 truncate">{notif.title}</span>
                       </div>
                       <p className="text-[10px] text-slate-400 mt-0.5 leading-snug">{notif.message}</p>
-                      
+
                       <div className="flex items-center justify-between mt-2.5">
                         <span className="text-[9px] font-bold text-slate-500 uppercase">{eventDateFormatted}</span>
                         {!notif.isRead && onMarkNotificationRead && (
