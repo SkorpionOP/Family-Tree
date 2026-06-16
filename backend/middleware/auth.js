@@ -21,6 +21,11 @@ const protect = async (req, res, next) => {
         return res.status(401).json({ message: 'Not authorized, user not found' });
       }
 
+      // Enforce single active session
+      if (req.user.currentSessionToken && req.user.currentSessionToken !== token) {
+        return res.status(401).json({ message: 'Session expired. Logged in from another device/session.' });
+      }
+
       next();
     } catch (error) {
       console.error(error);

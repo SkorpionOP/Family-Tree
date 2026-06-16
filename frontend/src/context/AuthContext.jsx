@@ -19,6 +19,46 @@ export const AuthProvider = ({ children }) => {
   const [fbUser, setFbUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Run synchronously once on initialization to handle 2-minute auto-logout
+  if (typeof window !== 'undefined' && !window.__authInitCheckDone) {
+    window.__authInitCheckDone = true;
+    const lastSeen = localStorage.getItem('lastSeen');
+    const token = localStorage.getItem('token');
+    if (token && lastSeen) {
+      const inactiveTime = Date.now() - parseInt(lastSeen, 10);
+      if (inactiveTime > 2 * 60 * 1000) {
+        console.log('Session expired: App was closed or inactive for more than 2 minutes.');
+        localStorage.removeItem('token');
+      }
+    }
+    localStorage.setItem('lastSeen', Date.now().toString());
+  }
+
+  // Set up global unauthorized logout event listener
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      console.log('Session invalidated (unauthorized). Logging out...');
+      setUser(null);
+      setFbUser(null);
+      signOut(auth).catch(() => {});
+    };
+    
+    window.addEventListener('auth-unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('auth-unauthorized', handleUnauthorized);
+  }, []);
+
+  // Update lastSeen heartbeat every 10 seconds while logged in
+  useEffect(() => {
+    const updateLastSeen = () => {
+      if (localStorage.getItem('token')) {
+        localStorage.setItem('lastSeen', Date.now().toString());
+      }
+    };
+    updateLastSeen();
+    const interval = setInterval(updateLastSeen, 10000);
+    return () => clearInterval(interval);
+  }, [user]);
+
   const fetchUser = async () => {
     const token = localStorage.getItem('token');
     if (!token) {

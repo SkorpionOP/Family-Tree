@@ -24,6 +24,10 @@ const UserSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  currentSessionToken: {
+    type: String,
+    default: ''
+  },
   telegramVerificationCode: {
     type: String,
     default: ''

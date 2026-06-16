@@ -39,10 +39,14 @@ const registerUser = async (req, res) => {
     });
 
     if (user) {
+      const token = generateToken(user.id);
+      user.currentSessionToken = token;
+      await user.save();
+
       res.status(201).json({
         _id: user.id,
         email: user.email,
-        token: generateToken(user.id),
+        token: token,
       });
     } else {
       res.status(400).json({ message: 'Invalid user data' });
@@ -63,10 +67,14 @@ const loginUser = async (req, res) => {
     const user = await User.findOne({ email });
 
     if (user && (await bcrypt.compare(password, user.passwordHash))) {
+      const token = generateToken(user.id);
+      user.currentSessionToken = token;
+      await user.save();
+
       res.json({
         _id: user.id,
         email: user.email,
-        token: generateToken(user.id),
+        token: token,
       });
     } else {
       res.status(400).json({ message: 'Invalid credentials' });
@@ -271,11 +279,15 @@ const googleLogin = async (req, res) => {
       });
     }
 
+    const token = generateToken(user.id);
+    user.currentSessionToken = token;
+    await user.save();
+
     res.json({
       _id: user.id,
       email: user.email,
       role: user.role || 'User',
-      token: generateToken(user.id),
+      token: token,
     });
   } catch (error) {
     console.error('Google Sign In Error:', error);
@@ -363,11 +375,15 @@ const firebaseLogin = async (req, res) => {
       await user.save();
     }
 
+    const token = generateToken(user.id);
+    user.currentSessionToken = token;
+    await user.save();
+
     res.json({
       _id: user.id,
       email: user.email,
       role: user.role || 'User',
-      token: generateToken(user.id),
+      token: token,
     });
   } catch (error) {
     console.error('Firebase Login Error:', error);

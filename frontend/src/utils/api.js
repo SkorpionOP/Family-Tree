@@ -63,6 +63,12 @@ const getHeadersForUpload = () => {
 };
 
 const handleResponse = async (res) => {
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('auth-unauthorized'));
+    }
+  }
   const data = await res.json();
   if (!res.ok) {
     throw new Error(data.message || 'Something went wrong');
