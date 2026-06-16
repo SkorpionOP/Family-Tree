@@ -33,8 +33,161 @@ import {
   Compass,
   UserPlus,
   Edit2,
-  Trash2
+  Trash2,
+  Share2
 } from 'lucide-react';
+
+// Helper to generate and download a gorgeous high-fidelity member profile card image
+const handleShareCard = async (node) => {
+  const canvas = document.createElement('canvas');
+  canvas.width = 600;
+  canvas.height = 350;
+  const ctx = canvas.getContext('2d');
+
+  // 1. Background Gradient
+  const grad = ctx.createLinearGradient(0, 0, 600, 350);
+  grad.addColorStop(0, '#0f172a'); // slate-900
+  grad.addColorStop(1, '#020617'); // slate-950
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 600, 350);
+
+  // 2. Card Accent border / glow
+  const isMale = node.gender === 1;
+  ctx.strokeStyle = isMale ? 'rgba(59, 130, 246, 0.25)' : 'rgba(236, 72, 153, 0.25)';
+  ctx.lineWidth = 4;
+  ctx.strokeRect(12, 12, 576, 326);
+
+  // Decorative header line
+  const accentGrad = ctx.createLinearGradient(12, 0, 588, 0);
+  if (isMale) {
+    accentGrad.addColorStop(0, '#3b82f6');
+    accentGrad.addColorStop(1, '#6366f1');
+  } else {
+    accentGrad.addColorStop(0, '#ec4899');
+    accentGrad.addColorStop(1, '#f43f5e');
+  }
+  ctx.fillStyle = accentGrad;
+  ctx.fillRect(12, 12, 576, 4);
+
+  // 3. Draw Watermark/Logo
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+  ctx.font = '900 10px sans-serif';
+  ctx.fillText('SANGAM ROOTS FAMILY TREE', 35, 45);
+
+  // 4. Draw Avatar Profile Image (or Fallback initials)
+  const drawAvatar = () => {
+    return new Promise((resolve) => {
+      if (node.profilePictureUrl) {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          ctx.save();
+          // Draw circular clip
+          ctx.beginPath();
+          ctx.arc(100, 180, 55, 0, Math.PI * 2);
+          ctx.closePath();
+          ctx.clip();
+          ctx.drawImage(img, 45, 125, 110, 110);
+          ctx.restore();
+
+          // Border ring
+          ctx.strokeStyle = isMale ? '#3b82f6' : '#ec4899';
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.arc(100, 180, 55, 0, Math.PI * 2);
+          ctx.stroke();
+          resolve();
+        };
+        img.onerror = () => {
+          drawInitialsFallback();
+          resolve();
+        };
+        img.src = node.profilePictureUrl;
+      } else {
+        drawInitialsFallback();
+        resolve();
+      }
+    });
+  };
+
+  const drawInitialsFallback = () => {
+    ctx.fillStyle = isMale ? 'rgba(59, 130, 246, 0.15)' : 'rgba(236, 72, 153, 0.15)';
+    ctx.beginPath();
+    ctx.arc(100, 180, 55, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.strokeStyle = isMale ? 'rgba(59, 130, 246, 0.3)' : 'rgba(236, 72, 153, 0.3)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(100, 180, 55, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.fillStyle = isMale ? '#60a5fa' : '#f472b6';
+    ctx.font = 'bold 32px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const initials = node.name ? node.name.split(' ').map(p => p[0]).join('').substring(0, 2).toUpperCase() : '?';
+    ctx.fillText(initials, 100, 180);
+  };
+
+  await drawAvatar();
+
+  // 5. Draw Member Details
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+
+  // Name
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 22px sans-serif';
+  ctx.fillText(node.name || 'Unknown', 185, 135);
+
+  // Role/Gender/Gen Info
+  ctx.fillStyle = '#94a3b8'; // slate-400
+  ctx.font = '11px sans-serif';
+  const genderStr = isMale ? 'Male' : 'Female';
+  ctx.fillText(`${genderStr}  •  Generation Level ${node.generationLevel}`, 185, 160);
+
+  // Divider line
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(185, 180);
+  ctx.lineTo(540, 180);
+  ctx.stroke();
+
+  // Detail Fields (Date of Birth, Blood Group, Gotram)
+  ctx.fillStyle = '#64748b'; // slate-500
+  ctx.font = 'bold 8.5px sans-serif';
+  ctx.fillText('DATE OF BIRTH', 185, 210);
+  ctx.fillText('BLOOD GROUP', 315, 210);
+  ctx.fillText('GOTRAM', 445, 210);
+
+  ctx.fillStyle = '#cbd5e1'; // slate-300
+  ctx.font = 'bold 12px sans-serif';
+  
+  const getDobFormatted = (dobString) => {
+    if (!dobString) return 'N/A';
+    const d = new Date(dobString);
+    if (isNaN(d.getTime())) return 'N/A';
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+  
+  ctx.fillText(getDobFormatted(node.dob), 185, 232);
+  ctx.fillText(node.bloodGroup || 'N/A', 315, 232);
+  ctx.fillText(node.gotram || 'N/A', 445, 232);
+
+  // Footer / Lineage watermark
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+  ctx.font = 'italic 9.5px sans-serif';
+  ctx.fillText('Generated from Sangam Roots Family Tree Application', 185, 285);
+
+  // 6. Download Trigger
+  const dataUrl = canvas.toDataURL('image/png');
+  const link = document.createElement('a');
+  link.download = `${node.name.replace(/\s+/g, '_')}_Profile_Card.png`;
+  link.href = dataUrl;
+  link.click();
+};
 
 const App = () => {
   const { user, loading: authLoading, login, loginWithGoogle, register, reloadUser, logout, needVerification, forgotPassword } = useAuth();
@@ -751,12 +904,22 @@ const App = () => {
 
                     <div className="flex items-center justify-between pb-3 border-b border-slate-800/40 mb-4">
                       <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Member Profile</span>
-                      <button
-                        onClick={() => setSelectedNode(null)}
-                        className="text-slate-500 hover:text-slate-200 p-1.5 bg-slate-950 hover:bg-slate-900 border border-slate-800 rounded-xl transition-all active:scale-95 cursor-pointer"
-                      >
-                        <X size={13} />
-                      </button>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => handleShareCard(selectedNode)}
+                          className="text-slate-400 hover:text-slate-100 p-1.5 bg-slate-950 hover:bg-slate-900 border border-slate-800 rounded-xl transition-all active:scale-95 cursor-pointer flex items-center space-x-1"
+                          title="Download Profile Card Image"
+                        >
+                          <Share2 size={12} />
+                          <span className="text-[9px] font-bold">Card</span>
+                        </button>
+                        <button
+                          onClick={() => setSelectedNode(null)}
+                          className="text-slate-500 hover:text-slate-200 p-1.5 bg-slate-950 hover:bg-slate-900 border border-slate-800 rounded-xl transition-all active:scale-95 cursor-pointer"
+                        >
+                          <X size={13} />
+                        </button>
+                      </div>
                     </div>
 
                     <div className="space-y-4">
@@ -1255,6 +1418,7 @@ const App = () => {
                 layoutDirection={layoutDirection}
                 onViewImage={(url) => setPreviewImageUrl(url)}
                 onViewCrossTree={handleViewCrossTree}
+                selectedNode={selectedNode}
               />
               {graphCenterNodeId && (
                 <button
