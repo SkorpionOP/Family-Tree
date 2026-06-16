@@ -15,7 +15,8 @@ const {
   updateProfile, 
   googleLogin, 
   firebaseLogin,
-  uploadProfilePicture
+  uploadProfilePicture,
+  logoutUser
 } = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
 
@@ -25,6 +26,7 @@ router.post('/google', googleLogin);
 router.post('/firebase-login', firebaseLogin);
 router.get('/me', protect, getMe);
 router.put('/profile', protect, updateProfile);
+router.post('/logout', protect, logoutUser);
 router.post('/upload', protect, upload.single('image'), uploadProfilePicture);
 
 module.exports = router;

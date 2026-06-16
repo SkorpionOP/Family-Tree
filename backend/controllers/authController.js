@@ -41,6 +41,7 @@ const registerUser = async (req, res) => {
     if (user) {
       const token = generateToken(user.id);
       user.currentSessionToken = token;
+      user.lastActive = new Date();
       await user.save();
 
       res.status(201).json({
@@ -67,8 +68,18 @@ const loginUser = async (req, res) => {
     const user = await User.findOne({ email });
 
     if (user && (await bcrypt.compare(password, user.passwordHash))) {
+      // Check for active session
+      if (user.currentSessionToken && user.lastActive) {
+        const timeout = 5 * 60 * 1000; // 5 minutes
+        const lastActiveTime = new Date(user.lastActive).getTime();
+        if (!isNaN(lastActiveTime) && (Date.now() - lastActiveTime) < timeout) {
+          return res.status(400).json({ message: 'Account is already logged in on another device. Please logout first, or wait for inactivity timeout.' });
+        }
+      }
+
       const token = generateToken(user.id);
       user.currentSessionToken = token;
+      user.lastActive = new Date();
       await user.save();
 
       res.json({
@@ -286,10 +297,20 @@ const googleLogin = async (req, res) => {
         },
         activeTrees: []
       });
+    } else {
+      // Check for active session
+      if (user.currentSessionToken && user.lastActive) {
+        const timeout = 5 * 60 * 1000; // 5 minutes
+        const lastActiveTime = new Date(user.lastActive).getTime();
+        if (!isNaN(lastActiveTime) && (Date.now() - lastActiveTime) < timeout) {
+          return res.status(400).json({ message: 'Account is already logged in on another device. Please logout first, or wait for inactivity timeout.' });
+        }
+      }
     }
 
     const token = generateToken(user.id);
     user.currentSessionToken = token;
+    user.lastActive = new Date();
     await user.save();
 
     res.json({
@@ -348,6 +369,17 @@ const firebaseLogin = async (req, res) => {
       }
     }
 
+    if (user) {
+      // Check for active session
+      if (user.currentSessionToken && user.lastActive) {
+        const timeout = 5 * 60 * 1000; // 5 minutes
+        const lastActiveTime = new Date(user.lastActive).getTime();
+        if (!isNaN(lastActiveTime) && (Date.now() - lastActiveTime) < timeout) {
+          return res.status(400).json({ message: 'Account is already logged in on another device. Please logout first, or wait for inactivity timeout.' });
+        }
+      }
+    }
+
     if (!user) {
       // Create user if not exists
       const salt = await bcrypt.genSalt(10);
@@ -386,6 +418,7 @@ const firebaseLogin = async (req, res) => {
 
     const token = generateToken(user.id);
     user.currentSessionToken = token;
+    user.lastActive = new Date();
     await user.save();
 
     res.json({
@@ -425,6 +458,20 @@ const uploadProfilePicture = async (req, res) => {
   }
 };
 
+const logoutUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (user) {
+      user.currentSessionToken = '';
+      user.lastActive = null;
+      await user.save();
+    }
+    res.status(200).json({ message: 'Logged out successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
@@ -433,5 +480,6 @@ module.exports = {
   googleLogin,
   firebaseLogin,
   syncUserToNodes,
-  uploadProfilePicture
+  uploadProfilePicture,
+  logoutUser
 };

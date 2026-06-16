@@ -126,6 +126,13 @@ export const api = {
       });
       return handleResponse(res);
     },
+    logout: async () => {
+      const res = await apiFetch(`/auth/logout`, {
+        method: 'POST',
+        headers: getHeaders(),
+      });
+      return handleResponse(res);
+    },
 
     uploadProfilePicture: async (file) => {
       const formData = new FormData();

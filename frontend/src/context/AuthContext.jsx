@@ -180,6 +180,11 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     setLoading(true);
     try {
+      await api.auth.logout();
+    } catch (err) {
+      console.error('Backend logout error:', err);
+    }
+    try {
       await signOut(auth);
       localStorage.removeItem('token');
       setUser(null);

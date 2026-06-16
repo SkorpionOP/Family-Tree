@@ -28,6 +28,10 @@ const UserSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  lastActive: {
+    type: Date,
+    default: null
+  },
   telegramVerificationCode: {
     type: String,
     default: ''

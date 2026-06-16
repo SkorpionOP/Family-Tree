@@ -26,6 +26,10 @@ const protect = async (req, res, next) => {
         return res.status(401).json({ message: 'Session expired. Logged in from another device/session.' });
       }
 
+      // Update last active time for session tracking
+      req.user.lastActive = new Date();
+      await req.user.save();
+
       next();
     } catch (error) {
       console.error(error);
