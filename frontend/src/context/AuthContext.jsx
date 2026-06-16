@@ -96,6 +96,20 @@ export const AuthProvider = ({ children }) => {
         setFbUser(firebaseUser);
         if (firebaseUser.emailVerified) {
           try {
+            // Check if we already have a session token
+            const existingToken = localStorage.getItem('token');
+            if (existingToken) {
+              try {
+                // Try fetching user. If it succeeds, the session is already valid.
+                const userData = await api.auth.getMe();
+                setUser(userData);
+                setLoading(false);
+                return;
+              } catch (err) {
+                console.log('Existing token invalid, logging in via Firebase...', err);
+              }
+            }
+
             const token = await firebaseUser.getIdToken();
             const data = await api.auth.firebaseLogin(token);
             localStorage.setItem('token', data.token);
