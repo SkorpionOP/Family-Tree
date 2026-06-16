@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, X, User, Heart, Compass, Smartphone, Calendar, Link as LinkIcon, Compass as CompassIcon, RefreshCw, Layers, GitBranch, Plus, Shield, LogOut, Trash2 } from 'lucide-react';
+import { Search, Filter, X, User, Heart, Compass, Smartphone, Calendar, Link as LinkIcon, Compass as CompassIcon, RefreshCw, Layers, GitBranch, Plus, Shield, LogOut, Trash2, Gift, Bell } from 'lucide-react';
 
 const Sidebar = ({
   nodes,
@@ -34,6 +34,13 @@ const Sidebar = ({
   loadingLogs = false,
   fetchLogs,
   onRevertLog,
+
+  // Notifications props
+  notifications = [],
+  onMarkNotificationRead,
+  onMarkAllNotificationsRead,
+  onNotificationClick,
+  hasNotificationAccess = false,
 }) => {
   const [showFilters, setShowFilters] = useState(false);
   const [activeTab, setActiveTab] = useState('members'); // 'members' | 'history'
@@ -72,6 +79,7 @@ const Sidebar = ({
   };
 
   const activeTree = trees.find((t) => t._id === activeTreeId);
+  const unreadCount = notifications ? notifications.filter(n => !n.isRead).length : 0;
 
   return (
     <div className="w-full md:w-80 bg-slate-950/95 border-r border-slate-900/50 flex flex-col h-full text-slate-200 overflow-y-auto border-r-slate-800/40 shadow-xl">
@@ -165,7 +173,7 @@ const Sidebar = ({
               : 'border-transparent text-slate-500 hover:text-slate-350 hover:bg-slate-900/20'
           }`}
         >
-          Members & Details
+          Members
         </button>
         <button
           onClick={() => setActiveTab('history')}
@@ -175,11 +183,26 @@ const Sidebar = ({
               : 'border-transparent text-slate-500 hover:text-slate-350 hover:bg-slate-900/20'
           }`}
         >
-          Activity History
+          History
+        </button>
+        <button
+          onClick={() => setActiveTab('notifications')}
+          className={`flex-1 py-3 text-xs font-bold border-b-2 transition-colors cursor-pointer relative ${
+            activeTab === 'notifications'
+              ? 'border-emerald-500 text-slate-200 bg-emerald-950/10'
+              : 'border-transparent text-slate-500 hover:text-slate-350 hover:bg-slate-900/20'
+          }`}
+        >
+          <span>Notifications</span>
+          {unreadCount > 0 && (
+            <span className="absolute top-2.5 right-1.5 bg-emerald-500 text-slate-950 text-[9px] font-extrabold px-1.5 py-0.5 rounded-full leading-none">
+              {unreadCount}
+            </span>
+          )}
         </button>
       </div>
 
-      {activeTab === 'members' ? (
+      {activeTab === 'members' && (
         <>
           {/* 1. SEARCH & FILTERS SECTION */}
           <div className="p-4 border-b border-slate-900 space-y-3">
@@ -369,7 +392,9 @@ const Sidebar = ({
             </div>
           )}
         </>
-      ) : (
+      )}
+
+      {activeTab === 'history' && (
         <div className="flex-1 flex flex-col min-h-0">
           <div className="p-4 border-b border-slate-900 flex items-center justify-between flex-shrink-0">
             <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Activity History</span>
@@ -427,6 +452,92 @@ const Sidebar = ({
                         Revert Change
                       </button>
                     )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'notifications' && (
+        <div className="flex-1 flex flex-col min-h-0">
+          <div className="p-4 border-b border-slate-900 flex items-center justify-between flex-shrink-0">
+            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Upcoming & Recent Events</span>
+            {unreadCount > 0 && onMarkAllNotificationsRead && (
+              <button
+                onClick={onMarkAllNotificationsRead}
+                className="text-[10px] text-emerald-400 hover:text-emerald-300 font-bold uppercase tracking-wider cursor-pointer"
+              >
+                Mark all as read
+              </button>
+            )}
+          </div>
+
+          <div className="p-4 space-y-3 overflow-y-auto flex-1 custom-scrollbar">
+            {!hasNotificationAccess ? (
+              <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-4 rounded-2xl text-center">
+                Access Denied: You must be an Admin or have a linked member profile to view notifications in this tree.
+              </div>
+            ) : !notifications || notifications.length === 0 ? (
+              <div className="text-center py-8 text-xs text-slate-500">
+                No events in the next 30 days.
+              </div>
+            ) : (
+              notifications.map((notif) => {
+                const isAnniversary = notif.type === 'anniversary';
+                const isBirthday = notif.type === 'birthday';
+                
+                const eventDateFormatted = new Date(notif.eventDate).toLocaleDateString(undefined, {
+                  month: 'short',
+                  day: 'numeric'
+                });
+
+                return (
+                  <div
+                    key={notif._id}
+                    onClick={() => onNotificationClick && onNotificationClick(notif)}
+                    className={`p-3 rounded-xl border text-xs flex items-start space-x-3 transition-all cursor-pointer relative ${
+                      notif.isRead
+                        ? 'bg-slate-950/20 border-slate-900/60 opacity-70 hover:opacity-100 hover:border-slate-800'
+                        : 'bg-slate-900 border-slate-800 hover:border-emerald-500/30 shadow-md shadow-slate-950/20'
+                    }`}
+                  >
+                    {!notif.isRead && (
+                      <span className="absolute top-3.5 right-3.5 w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    )}
+
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                      isBirthday ? 'bg-emerald-500/10 text-emerald-400' :
+                      isAnniversary ? 'bg-pink-500/10 text-pink-400' :
+                      'bg-rose-500/10 text-rose-400'
+                    }`}>
+                      {isBirthday ? <Gift size={16} /> :
+                       isAnniversary ? <Heart size={16} /> :
+                       <Shield size={16} />}
+                    </div>
+
+                    <div className="flex-1 min-w-0 pr-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-slate-200 truncate">{notif.title}</span>
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-0.5 leading-snug">{notif.message}</p>
+                      
+                      <div className="flex items-center justify-between mt-2.5">
+                        <span className="text-[9px] font-bold text-slate-500 uppercase">{eventDateFormatted}</span>
+                        {!notif.isRead && onMarkNotificationRead && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onMarkNotificationRead(notif._id);
+                            }}
+                            className="text-[9px] font-extrabold text-emerald-400 hover:text-emerald-300 uppercase tracking-widest bg-slate-950/60 px-2 py-0.5 rounded-md border border-slate-800 hover:border-emerald-500/20"
+                          >
+                            Mark Read
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 );
               })

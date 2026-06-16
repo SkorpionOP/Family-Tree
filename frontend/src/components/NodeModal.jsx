@@ -40,6 +40,7 @@ const NodeModal = ({
     parentNodeId: '',
     isDeceased: false,
     dateOfDeath: '',
+    marriageDate: '',
   });
 
   const [loading, setLoading] = useState(false);
@@ -106,6 +107,10 @@ const NodeModal = ({
   // Find target node in current tree (the one we are adding spouse/child to)
   const targetNode = nodes && targetNodeId ? nodes.find((n) => n._id === targetNodeId) : null;
 
+  const hasSpouse = mode === 'edit_profile' && nodeData && edges && edges.some(
+    e => e.relationshipType === 'spouse' && (e.source === nodeData._id || e.target === nodeData._id)
+  );
+
   // Sync edit data and reset states
   useEffect(() => {
     if (isOpen) {
@@ -138,6 +143,7 @@ const NodeModal = ({
           parentNodeId: '',
           isDeceased: nodeData.isDeceased || false,
           dateOfDeath: nodeData.dateOfDeath ? nodeData.dateOfDeath.substring(0, 10) : '',
+          marriageDate: nodeData.marriageDate ? nodeData.marriageDate.substring(0, 10) : '',
         });
       } else {
         let defaultGender = 1;
@@ -168,6 +174,7 @@ const NodeModal = ({
           parentNodeId: '',
           isDeceased: false,
           dateOfDeath: '',
+          marriageDate: '',
         });
       }
     }
@@ -509,6 +516,7 @@ const NodeModal = ({
             modeType: 'existing',
             targetNodeId,
             spouseNodeId: formData.spouseNodeId,
+            marriageDate: formData.marriageDate || null,
           });
         } else if (spouseType === 'cross_tree') {
           if (!formData.crossTreeNodeId) {
@@ -518,6 +526,7 @@ const NodeModal = ({
             modeType: 'cross_tree',
             targetNodeId,
             crossTreeNodeId: formData.crossTreeNodeId,
+            marriageDate: formData.marriageDate || null,
           });
         } else {
           // New spouse node
@@ -541,6 +550,7 @@ const NodeModal = ({
             existingNodeId: targetNodeId,
             isDeceased: formData.isDeceased,
             dateOfDeath: formData.isDeceased ? (formData.dateOfDeath || null) : null,
+            marriageDate: formData.marriageDate || null,
           });
         }
       } else {
@@ -584,6 +594,7 @@ const NodeModal = ({
             profilePictureUrl: formData.profilePictureUrl,
             isDeceased: formData.isDeceased,
             dateOfDeath: formData.isDeceased ? (formData.dateOfDeath || null) : null,
+            marriageDate: formData.marriageDate || null,
           };
 
           if (mode === 'add_child') {
@@ -1028,6 +1039,24 @@ const NodeModal = ({
                           required={formData.isDeceased}
                           max={new Date().toISOString().split('T')[0]}
                           className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-200 rounded-xl pl-9 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-rose-500/50"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Marriage Date */}
+                  {(mode === 'add_spouse' || (mode === 'edit_profile' && hasSpouse)) && (
+                    <div className="col-span-2 animate-in fade-in slide-in-from-top-2 duration-150">
+                      <label className="text-[10px] text-slate-500 uppercase font-bold tracking-wider block mb-1">Marriage Date</label>
+                      <div className="relative">
+                        <Calendar size={14} className="absolute left-3 top-3.5 text-slate-500" />
+                        <input
+                          type="date"
+                          name="marriageDate"
+                          value={formData.marriageDate}
+                          onChange={handleInputChange}
+                          max={new Date().toISOString().split('T')[0]}
+                          className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-200 rounded-xl pl-9 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
                         />
                       </div>
                     </div>

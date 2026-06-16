@@ -70,6 +70,10 @@ const NodeSchema = new mongoose.Schema({
   dateOfDeath: {
     type: Date,
     default: null
+  },
+  marriageDate: {
+    type: Date,
+    default: null
   }
 }, {
   timestamps: true

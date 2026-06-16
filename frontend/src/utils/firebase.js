@@ -1,6 +1,8 @@
 import { initializeApp } from "firebase/app";
 import { 
   getAuth, 
+  setPersistence,
+  inMemoryPersistence,
   GoogleAuthProvider, 
   signInWithPopup, 
   signInWithEmailAndPassword, 
@@ -28,6 +30,9 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+setPersistence(auth, inMemoryPersistence).catch((err) => {
+  console.error("Failed to set Firebase Auth persistence:", err);
+});
 export const googleProvider = new GoogleAuthProvider();
 
 export { 

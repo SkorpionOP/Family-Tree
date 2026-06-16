@@ -31,7 +31,7 @@ const getLayoutedElements = (nodes, edges, direction = 'TB') => {
  
   // Add nodes to dagre graph with actual visual sizes
   nodes.forEach((node) => {
-    dagreGraph.setNode(node.id, { width: 200, height: 60 });
+    dagreGraph.setNode(node.id, { width: 220, height: 95 });
   });
  
   // Add edges to dagre graph
@@ -155,14 +155,14 @@ const getLayoutedElements = (nodes, edges, direction = 'TB') => {
       finalY = genLevel * genGap;
     }
     
-    // Position offset to center the handles (matching the 200x60 visual size)
+    // Position offset to center the handles (matching the 220x95 visual size)
     return {
       ...node,
       targetPosition: isHorizontal ? 'left' : 'top',
       sourcePosition: isHorizontal ? 'right' : 'bottom',
       position: {
-        x: finalX - 100, // half of visual node width (200/2)
-        y: finalY - 30,  // half of visual node height (60/2)
+        x: finalX - 110, // half of visual node width (220/2)
+        y: finalY - 47.5,  // half of visual node height (95/2)
       },
     };
   });

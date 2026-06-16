@@ -19,21 +19,6 @@ export const AuthProvider = ({ children }) => {
   const [fbUser, setFbUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Run synchronously once on initialization to handle 2-minute auto-logout
-  if (typeof window !== 'undefined' && !window.__authInitCheckDone) {
-    window.__authInitCheckDone = true;
-    const lastSeen = localStorage.getItem('lastSeen');
-    const token = localStorage.getItem('token');
-    if (token && lastSeen) {
-      const inactiveTime = Date.now() - parseInt(lastSeen, 10);
-      if (inactiveTime > 2 * 60 * 1000) {
-        console.log('Session expired: App was closed or inactive for more than 2 minutes.');
-        localStorage.removeItem('token');
-      }
-    }
-    localStorage.setItem('lastSeen', Date.now().toString());
-  }
-
   // Set up global unauthorized logout event listener
   useEffect(() => {
     const handleUnauthorized = () => {
@@ -47,20 +32,8 @@ export const AuthProvider = ({ children }) => {
     return () => window.removeEventListener('auth-unauthorized', handleUnauthorized);
   }, []);
 
-  // Update lastSeen heartbeat every 10 seconds while logged in
-  useEffect(() => {
-    const updateLastSeen = () => {
-      if (localStorage.getItem('token')) {
-        localStorage.setItem('lastSeen', Date.now().toString());
-      }
-    };
-    updateLastSeen();
-    const interval = setInterval(updateLastSeen, 10000);
-    return () => clearInterval(interval);
-  }, [user]);
-
   const fetchUser = async () => {
-    const token = localStorage.getItem('token');
+    const token = api.getToken();
     if (!token) {
       setUser(null);
       setLoading(false);
@@ -72,7 +45,7 @@ export const AuthProvider = ({ children }) => {
       setUser(userData);
     } catch (err) {
       console.error('Failed to load user profile from backend', err);
-      localStorage.removeItem('token');
+      api.setToken(null);
       setUser(null);
     } finally {
       setLoading(false);
@@ -81,7 +54,7 @@ export const AuthProvider = ({ children }) => {
 
   // Fetch user profile on mount if token exists
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = api.getToken();
     if (token) {
       fetchUser();
     } else {
@@ -97,7 +70,7 @@ export const AuthProvider = ({ children }) => {
         if (firebaseUser.emailVerified) {
           try {
             // Check if we already have a session token
-            const existingToken = localStorage.getItem('token');
+            const existingToken = api.getToken();
             if (existingToken) {
               try {
                 // Try fetching user. If it succeeds, the session is already valid.
@@ -112,17 +85,17 @@ export const AuthProvider = ({ children }) => {
 
             const token = await firebaseUser.getIdToken();
             const data = await api.auth.firebaseLogin(token);
-            localStorage.setItem('token', data.token);
+            api.setToken(data.token);
             await fetchUser();
           } catch (err) {
             console.error('Error syncing with backend', err);
-            localStorage.removeItem('token');
+            api.setToken(null);
             setUser(null);
             setLoading(false);
           }
         } else {
           // Logged in to Firebase but email not verified
-          localStorage.removeItem('token');
+          api.setToken(null);
           setUser(null);
           setLoading(false);
         }
@@ -130,12 +103,12 @@ export const AuthProvider = ({ children }) => {
         // Only clear token if they were actually logged in to Firebase before (sign out)
         setFbUser((prevFbUser) => {
           if (prevFbUser) {
-            localStorage.removeItem('token');
+            api.setToken(null);
             setUser(null);
           }
           return null;
         });
-        if (!localStorage.getItem('token')) {
+        if (!api.getToken()) {
           setLoading(false);
         }
       }
@@ -158,14 +131,14 @@ export const AuthProvider = ({ children }) => {
       
       const token = await firebaseUser.getIdToken();
       const data = await api.auth.firebaseLogin(token);
-      localStorage.setItem('token', data.token);
+      api.setToken(data.token);
       await fetchUser();
       return data;
     } catch (err) {
       try {
         console.log('Firebase login failed or user not in Firebase. Attempting local backend login...');
         const data = await api.auth.login(email, password);
-        localStorage.setItem('token', data.token);
+        api.setToken(data.token);
         await fetchUser();
         return data;
       } catch (localErr) {
@@ -199,7 +172,7 @@ export const AuthProvider = ({ children }) => {
       
       const token = await firebaseUser.getIdToken();
       const data = await api.auth.firebaseLogin(token);
-      localStorage.setItem('token', data.token);
+      api.setToken(data.token);
       await fetchUser();
       return data;
     } catch (err) {
@@ -217,7 +190,7 @@ export const AuthProvider = ({ children }) => {
     }
     try {
       await signOut(auth);
-      localStorage.removeItem('token');
+      api.setToken(null);
       setUser(null);
     } catch (err) {
       console.error('Logout error:', err);
@@ -237,7 +210,7 @@ export const AuthProvider = ({ children }) => {
         if (firebaseUser.emailVerified) {
           const token = await firebaseUser.getIdToken();
           const data = await api.auth.firebaseLogin(token);
-          localStorage.setItem('token', data.token);
+          api.setToken(data.token);
           await fetchUser();
           return true;
         }

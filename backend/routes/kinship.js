@@ -16,6 +16,11 @@ const {
   revertTreeLog,
   deleteEdge
 } = require('../controllers/kinshipController');
+const {
+  getNotifications,
+  markAsRead,
+  markAllAsRead
+} = require('../controllers/notificationController');
 const { protect } = require('../middleware/auth');
 
 // Multer memory storage setup (limit: 5MB)
@@ -38,6 +43,11 @@ router.delete('/:treeId/nodes/:nodeId', deleteNode);
 router.get('/:treeId/relation', classifyKinshipRelation);
 router.get('/:treeId/logs', getTreeLogs);
 router.post('/:treeId/logs/:logId/revert', revertTreeLog);
+
+// Notification endpoints
+router.get('/:treeId/notifications', getNotifications);
+router.put('/:treeId/notifications/read-all', markAllAsRead);
+router.put('/:treeId/notifications/:notificationId/read', markAsRead);
 
 // Profile picture upload endpoint
 router.post('/:treeId/upload', upload.single('image'), uploadProfilePicture);

@@ -70,7 +70,7 @@ const CustomNode = ({ data }) => {
   const canDelete = userRole === 'Admin';
 
   return (
-    <div className={`relative px-3 py-2 rounded-2xl bg-slate-900 border text-slate-100 min-w-[190px] shadow-xl backdrop-blur-md transition-all duration-300 ${borderClass} ${isDeceased ? 'opacity-85' : ''}`}>
+    <div className={`relative px-3 py-2.5 rounded-2xl bg-slate-900 border text-slate-100 w-[220px] h-[95px] flex flex-col justify-between shadow-xl backdrop-blur-md transition-all duration-300 ${borderClass} ${isDeceased ? 'opacity-85' : ''}`}>
       
       {/* Handles for React Flow. Both source and target handles on all sides to allow flexible connections */}
       {/* Top Handle */}
@@ -135,17 +135,19 @@ const CustomNode = ({ data }) => {
           </p>
         </div>
       </div>
-      {crossTreeLinkId && (
+      {crossTreeLinkId ? (
         <button
           onClick={(e) => {
             e.stopPropagation();
             if (onViewCrossTree) onViewCrossTree(crossTreeLinkId);
           }}
-          className="mt-2.5 w-full py-1 text-[8px] font-bold bg-purple-950/40 text-purple-400 hover:bg-purple-950/60 border border-purple-500/20 hover:border-purple-500/40 rounded-lg flex items-center justify-center space-x-1 transition-all active:scale-95 cursor-pointer group"
+          className="w-full py-1 text-[8px] font-bold bg-purple-950/40 text-purple-400 hover:bg-purple-950/60 border border-purple-500/20 hover:border-purple-500/40 rounded-lg flex items-center justify-center space-x-1 transition-all active:scale-95 cursor-pointer group flex-shrink-0"
         >
           <Compass size={10} className="group-hover:rotate-45 transition-transform duration-300" />
           <span>Check Family Tree</span>
         </button>
+      ) : (
+        <div className="h-[22px] flex-shrink-0" />
       )}
     </div>
   );
