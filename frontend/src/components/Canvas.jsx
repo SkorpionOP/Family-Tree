@@ -390,15 +390,21 @@ const CanvasComponent = ({
     setEdges
   ]);
 
-  // Fit view whenever nodes length changes or layout completes
+  // Track signature of rawNodes to trigger fitView only on initial load, structural updates, or layout changes
+  const lastSignatureRef = React.useRef('');
+
   useEffect(() => {
-    if (nodes.length > 0) {
-      const timer = setTimeout(() => {
-        fitView({ padding: 0.08, duration: 400 });
-      }, 100);
-      return () => clearTimeout(timer);
+    if (rawNodes.length > 0) {
+      const currentSignature = `${rawNodes.map((n) => n._id).sort().join(',')}_${layoutDirection}`;
+      if (currentSignature !== lastSignatureRef.current) {
+        lastSignatureRef.current = currentSignature;
+        const timer = setTimeout(() => {
+          fitView({ padding: 0.08, duration: 400 });
+        }, 150);
+        return () => clearTimeout(timer);
+      }
     }
-  }, [nodes, fitView]);
+  }, [rawNodes, layoutDirection, fitView]);
 
   return (
     <div className="w-full h-full relative bg-surface-0">

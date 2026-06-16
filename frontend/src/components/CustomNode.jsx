@@ -49,50 +49,54 @@ const CustomNode = ({ data }) => {
 
   const age = calculateAge(dob, isDeceased ? dateOfDeath : null);
 
-  // Determine node styling based on state
-  let containerClass = 'border-slate-700/50 shadow-lg';
-  let glowClass = '';
+  // Get initials for profile fallback
+  const getInitials = (n) => {
+    if (!n) return '?';
+    return n.split(' ').map(p => p[0]).join('').substring(0, 2).toUpperCase();
+  };
 
+  // Determine node styling based on state
+  let containerClass = 'border-slate-800/80 bg-gradient-to-br from-slate-900/90 to-slate-950/90 shadow-slate-950/40';
+  let accentColor = 'from-emerald-500 to-teal-500';
+  
   if (isDeceased) {
-    containerClass = 'border-slate-600/40 shadow-slate-900/50 opacity-80';
+    containerClass = 'border-slate-800/60 bg-gradient-to-br from-slate-950/95 to-slate-900/90 opacity-70';
+    accentColor = 'from-slate-600 to-slate-700';
   } else if (isMale) {
-    containerClass = 'border-blue-500/30 shadow-blue-500/5';
+    containerClass = 'border-blue-500/20 bg-gradient-to-br from-slate-900/95 to-blue-950/20 shadow-blue-950/20 hover:border-blue-500/40';
+    accentColor = 'from-blue-500 to-indigo-500';
   } else {
-    containerClass = 'border-pink-500/30 shadow-pink-500/5';
+    containerClass = 'border-pink-500/20 bg-gradient-to-br from-slate-900/95 to-pink-950/20 shadow-pink-950/20 hover:border-pink-500/40';
+    accentColor = 'from-pink-500 to-rose-500';
   }
 
   if (isSearched) {
-    containerClass = 'border-yellow-400/60 shadow-xl ring-2 ring-yellow-400/20 scale-105';
-    glowClass = 'shadow-yellow-400/20';
+    containerClass = 'border-yellow-400/80 bg-gradient-to-br from-slate-900/90 to-yellow-950/20 shadow-xl ring-2 ring-yellow-400/20 scale-105';
   } else if (isRelationSource) {
-    containerClass = 'border-emerald-400/60 shadow-xl ring-2 ring-emerald-400/20 scale-105';
-    glowClass = 'shadow-emerald-400/20';
+    containerClass = 'border-emerald-500 bg-gradient-to-br from-slate-900/90 to-emerald-950/20 shadow-xl ring-2 ring-emerald-500/20 scale-105';
   } else if (isRelationTarget) {
-    containerClass = 'border-purple-400/60 shadow-xl ring-2 ring-purple-400/20 scale-105';
-    glowClass = 'shadow-purple-400/20';
+    containerClass = 'border-purple-500 bg-gradient-to-br from-slate-900/90 to-purple-950/20 shadow-xl ring-2 ring-purple-500/20 scale-105';
   }
 
   // Avatar color scheme
   const avatarBg = isDeceased
-    ? 'bg-slate-800/60 border-slate-600/40 text-slate-500'
+    ? 'bg-slate-900 border-slate-800 text-slate-500'
     : isMale
-      ? 'bg-blue-950/50 border-blue-500/30 text-blue-400'
-      : 'bg-pink-950/50 border-pink-500/30 text-pink-400';
+    ? 'bg-blue-950/50 border-blue-500/20 text-blue-400'
+    : 'bg-pink-950/50 border-pink-500/20 text-pink-400';
 
   const avatarBorder = isDeceased
-    ? 'border-slate-600/40'
+    ? 'border-slate-800'
     : isMale
-      ? 'border-blue-500/30'
-      : 'border-pink-500/30';
-
-  // Permission settings
-  const canEdit = userRole === 'Admin' || userRole === 'Sub-Admin' || (userRole === 'Standard' && data.isCurrentUser);
-  const canAdd = userRole === 'Admin' || userRole === 'Sub-Admin';
-  const canDelete = userRole === 'Admin';
+    ? 'border-blue-500/30'
+    : 'border-pink-500/30';
 
   return (
-    <div className={`relative px-3.5 py-2.5 rounded-2xl bg-slate-950/85 border text-slate-100 w-[220px] h-[95px] flex flex-col justify-between shadow-xl backdrop-blur-md transition-all duration-300 select-none ${containerClass} ${isDeceased ? 'opacity-75' : 'hover:scale-[1.02]'}`}>
+    <div className={`relative px-3.5 py-2.5 rounded-2xl border text-slate-100 w-[220px] h-[95px] flex flex-col justify-between shadow-2xl backdrop-blur-md transition-all duration-300 select-none ${containerClass} ${isDeceased ? 'opacity-75' : 'hover:scale-[1.02]'}`}>
       
+      {/* Top Accent Bar */}
+      <div className={`absolute top-0 left-0 right-0 h-[2px] rounded-t-2xl bg-gradient-to-r ${accentColor} opacity-80`} />
+
       {/* Absolute Badge Indicators */}
       <div className="absolute top-2.5 right-2.5 flex space-x-1 z-10">
         {isDeceased && (
@@ -125,7 +129,7 @@ const CustomNode = ({ data }) => {
       <Handle type="target" position={Position.Right} id="right-target" className="!bg-slate-500/60 !w-1.5 !h-1.5 !opacity-0 !border-none" />
  
       {/* Main Info */}
-      <div className="flex items-center space-x-2.5 mt-0.5">
+      <div className="flex items-center space-x-2.5 mt-1">
         {profilePictureUrl ? (
           <img
             src={profilePictureUrl}
@@ -137,8 +141,8 @@ const CustomNode = ({ data }) => {
             }}
           />
         ) : (
-          <div className={`w-9 h-9 rounded-full flex items-center justify-center border flex-shrink-0 ${avatarBg} ${isDeceased ? 'grayscale' : ''}`}>
-            <User size={15} />
+          <div className={`w-9 h-9 rounded-full flex items-center justify-center border text-[10px] font-bold tracking-wider flex-shrink-0 ${avatarBg} ${isDeceased ? 'grayscale' : ''}`}>
+            {getInitials(name)}
           </div>
         )}
  
@@ -169,9 +173,13 @@ const CustomNode = ({ data }) => {
           <span>Check Family Tree</span>
         </button>
       ) : (
-        <div className="flex items-center justify-between text-[8px] text-slate-500/80 px-1 border-t border-slate-900/50 pt-1">
-          <span>{gotram ? `Gotram: ${gotram}` : ''}</span>
-          <span>{bloodGroup ? `Blood: ${bloodGroup}` : ''}</span>
+        <div className="flex items-center justify-between text-[8px] text-slate-400 px-1 border-t border-slate-800/40 pt-1 mt-1">
+          <span className="flex items-center gap-0.5">
+            <span className="text-slate-600">G:</span> <span className="font-semibold text-slate-300 truncate max-w-[65px]">{gotram || 'N/A'}</span>
+          </span>
+          <span className="flex items-center gap-0.5">
+            <span className="text-slate-600">B:</span> <span className="font-semibold text-slate-300">{bloodGroup || 'N/A'}</span>
+          </span>
         </div>
       )}
     </div>
