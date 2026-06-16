@@ -308,7 +308,17 @@ const App = () => {
     if (!activeTreeId) return;
     
     if (modalMode === 'add_child') {
-      await api.kinship.createNode(activeTreeId, data);
+      if (data.modeType === 'existing_child') {
+        await api.kinship.createParentChild(activeTreeId, data.parentId, data.childId);
+      } else {
+        await api.kinship.createNode(activeTreeId, data);
+      }
+    } else if (modalMode === 'add_parent') {
+      if (data.modeType === 'existing_parent') {
+        await api.kinship.createParentChild(activeTreeId, data.parentId, data.childId);
+      } else {
+        await api.kinship.createNode(activeTreeId, data);
+      }
     } else if (modalMode === 'add_spouse') {
       if (data.modeType === 'existing') {
         // Link pre-existing nodes in marriage
@@ -344,6 +354,12 @@ const App = () => {
 
   const handleAddSpouseClick = (id) => {
     setModalMode('add_spouse');
+    setModalTargetId(id);
+    setModalOpen(true);
+  };
+
+  const handleAddParentClick = (id) => {
+    setModalMode('add_parent');
     setModalTargetId(id);
     setModalOpen(true);
   };
@@ -986,7 +1002,7 @@ const App = () => {
                             <span>Expand Tree from Here</span>
                           </button>
                         )}
-
+                        
                         {/* Node Manipulation Actions */}
                         {(canAdd || canEdit || canDelete) && (
                           <div className="grid grid-cols-2 gap-2 text-[10px]">
@@ -1009,6 +1025,16 @@ const App = () => {
                                 <span>Add Spouse</span>
                               </button>
                             )}
+                            {canAdd && (
+                              <button
+                                onClick={() => handleAddParentClick(selectedNode._id)}
+                                disabled={rawEdges.filter(e => e.relationshipType === 'parent_child' && e.targetNodeId === selectedNode._id).length >= 2}
+                                className="bg-slate-950 border border-slate-800 hover:border-slate-700 hover:bg-slate-900 text-slate-350 px-2 py-1.5 rounded-xl flex items-center justify-center space-x-1 transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                              >
+                                <Plus size={11} className="text-blue-500" />
+                                <span>Add Parent</span>
+                              </button>
+                            )}
                             {canEdit && (
                               <button
                                 onClick={() => handleEditProfileClick(selectedNode._id)}
@@ -1021,10 +1047,10 @@ const App = () => {
                             {canDelete && (
                               <button
                                 onClick={() => handleDeleteNodeClick(selectedNode._id)}
-                                className="bg-slate-950 border border-slate-850 hover:border-red-900/30 hover:bg-red-950/20 text-red-400 px-2 py-1.5 rounded-xl flex items-center justify-center space-x-1 transition-all active:scale-95 cursor-pointer"
+                                className="col-span-2 bg-slate-950 border border-slate-855 hover:border-red-900/30 hover:bg-red-950/20 text-red-400 px-2 py-1.5 rounded-xl flex items-center justify-center space-x-1 transition-all active:scale-95 cursor-pointer"
                               >
                                 <Trash2 size={11} />
-                                <span>Delete</span>
+                                <span>Delete Member</span>
                               </button>
                             )}
                           </div>

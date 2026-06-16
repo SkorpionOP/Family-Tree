@@ -257,6 +257,14 @@ export const api = {
       });
       return handleResponse(res);
     },
+    createParentChild: async (treeId, parentId, childId) => {
+      const res = await apiFetch(`/kinship/${treeId}/edges/parent-child`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ parentId, childId }),
+      });
+      return handleResponse(res);
+    },
     updateNode: async (treeId, nodeId, nodeData) => {
       const res = await apiFetch(`/kinship/${treeId}/nodes/${nodeId}`, {
         method: 'PUT',

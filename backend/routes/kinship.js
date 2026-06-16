@@ -6,6 +6,7 @@ const {
   createNode,
   createSpouseNode,
   createMarriageEdge,
+  createParentChildEdge,
   updateNode,
   deleteNode,
   classifyKinshipRelation,
@@ -29,6 +30,7 @@ router.get('/:treeId/graph', getTreeGraph);
 router.post('/:treeId/nodes', createNode);
 router.post('/:treeId/nodes/spouse', createSpouseNode);
 router.post('/:treeId/edges/marriage', createMarriageEdge);
+router.post('/:treeId/edges/parent-child', createParentChildEdge);
 router.put('/:treeId/nodes/:nodeId', updateNode);
 router.delete('/:treeId/nodes/:nodeId', deleteNode);
 router.get('/:treeId/relation', classifyKinshipRelation);

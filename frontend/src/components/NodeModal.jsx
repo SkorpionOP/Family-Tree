@@ -15,6 +15,8 @@ const NodeModal = ({
   onSubmit, // submit handler
 }) => {
   const [spouseType, setSpouseType] = useState('new'); // 'new' | 'existing' | 'cross_tree'
+  const [childType, setChildType] = useState('new'); // 'new' | 'existing'
+  const [parentType, setParentType] = useState('new'); // 'new' | 'existing'
   const [selectedCrossTreeId, setSelectedCrossTreeId] = useState('');
   const [crossTreeNodes, setCrossTreeNodes] = useState([]);
   const [crossTreeEdges, setCrossTreeEdges] = useState([]);
@@ -34,6 +36,8 @@ const NodeModal = ({
     spouseNodeId: '',
     crossTreeNodeId: '',
     parentId: '',
+    childNodeId: '',
+    parentNodeId: '',
     isDeceased: false,
     dateOfDeath: '',
   });
@@ -106,6 +110,8 @@ const NodeModal = ({
     if (isOpen) {
       setError('');
       setSpouseType('new');
+      setChildType('new');
+      setParentType('new');
       setSelectedCrossTreeId('');
       setCrossTreeNodes([]);
       setCrossTreeIdInput('');
@@ -126,14 +132,26 @@ const NodeModal = ({
           spouseNodeId: '',
           crossTreeNodeId: '',
           parentId: '',
+          childNodeId: '',
+          parentNodeId: '',
           isDeceased: nodeData.isDeceased || false,
           dateOfDeath: nodeData.dateOfDeath ? nodeData.dateOfDeath.substring(0, 10) : '',
         });
       } else {
+        let defaultGender = 1;
+        if (mode === 'add_parent' && targetNodeId && edges && nodes) {
+          const currentParents = edges.filter(e => e.relationshipType === 'parent_child' && e.targetNodeId === targetNodeId);
+          if (currentParents.length > 0) {
+            const parentNode = nodes.find(n => n._id === currentParents[0].sourceNodeId);
+            if (parentNode) {
+              defaultGender = parentNode.gender === 1 ? 0 : 1;
+            }
+          }
+        }
         setFormData({
           name: '',
           dob: '',
-          gender: 1,
+          gender: defaultGender,
           bloodGroup: '',
           gotram: '',
           mobileNumber: '',
@@ -144,12 +162,14 @@ const NodeModal = ({
           spouseNodeId: '',
           crossTreeNodeId: '',
           parentId: '',
+          childNodeId: '',
+          parentNodeId: '',
           isDeceased: false,
           dateOfDeath: '',
         });
       }
     }
-  }, [isOpen, mode, nodeData]);
+  }, [isOpen, mode, nodeData, targetNodeId, edges, nodes]);
 
   // Fetch nodes from other tree for cross-tree linking
   useEffect(() => {
@@ -209,6 +229,51 @@ const NodeModal = ({
         Math.abs(node.generationLevel - targetNode.generationLevel) <= 1 &&
         !isNodeMarried(node._id)
     );
+  };
+
+  const getValidChildCandidates = () => {
+    if (!targetNode || !nodes) return [];
+    const targetSpouses = edges
+      ? edges.filter(e => e.relationshipType === 'spouse' && (e.sourceNodeId === targetNode._id || e.targetNodeId === targetNode._id))
+             .map(e => e.sourceNodeId === targetNode._id ? e.targetNodeId : e.sourceNodeId)
+      : [];
+      
+    return nodes.filter(node => {
+      if (node._id === targetNode._id) return false;
+      if (targetSpouses.includes(node._id)) return false;
+      
+      const existingParents = edges
+        ? edges.filter(e => e.relationshipType === 'parent_child' && e.targetNodeId === node._id)
+        : [];
+      if (existingParents.length >= 2) return false;
+      
+      return true;
+    });
+  };
+
+  const getValidParentCandidates = () => {
+    if (!targetNode || !nodes) return [];
+    
+    const currentParentEdges = edges
+      ? edges.filter(e => e.relationshipType === 'parent_child' && e.targetNodeId === targetNode._id)
+      : [];
+    const currentParentIds = currentParentEdges.map(e => e.sourceNodeId);
+    
+    let conflictGender = null;
+    if (currentParentIds.length > 0) {
+      const parent1 = nodes.find(n => n._id === currentParentIds[0]);
+      if (parent1) {
+        conflictGender = parent1.gender;
+      }
+    }
+    
+    return nodes.filter(node => {
+      if (node._id === targetNode._id) return false;
+      if (currentParentIds.includes(node._id)) return false;
+      if (conflictGender !== null && node.gender === conflictGender) return false;
+      
+      return true;
+    });
   };
 
   // Helper to check if a cross-tree node already has a spouse edge
@@ -358,37 +423,58 @@ const NodeModal = ({
           });
         }
       } else {
-        // add_child or edit_profile
-        if (!formData.name) {
-          throw new Error('Name is required');
-        }
-
-        const linksArr = formData.socialLinks
-          ? formData.socialLinks.split(',').map((s) => s.trim()).filter(Boolean)
-          : [];
-
-        const submitPayload = {
-          name: formData.name,
-          dob: formData.dob || null,
-          bloodGroup: formData.bloodGroup,
-          gotram: formData.gotram,
-          mobileNumber: formData.mobileNumber,
-          email: formData.email,
-          socialLinks: linksArr,
-          profilePictureUrl: formData.profilePictureUrl,
-          isDeceased: formData.isDeceased,
-          dateOfDeath: formData.isDeceased ? (formData.dateOfDeath || null) : null,
-        };
-
-        if (mode === 'add_child') {
-          submitPayload.gender = parseInt(formData.gender);
-          submitPayload.parentId = targetNodeId || formData.parentId;
-          if (nodes && nodes.length > 0 && !submitPayload.parentId) {
-            throw new Error('Please select a parent node');
+        // add_child, add_parent, or edit_profile
+        if (mode === 'add_child' && childType === 'existing') {
+          if (!formData.childNodeId) {
+            throw new Error('Please select a child member to link');
           }
-        }
+          await onSubmit({
+            modeType: 'existing_child',
+            parentId: targetNodeId || formData.parentId || null,
+            childId: formData.childNodeId,
+          });
+        } else if (mode === 'add_parent' && parentType === 'existing') {
+          if (!formData.parentNodeId) {
+            throw new Error('Please select a parent member to link');
+          }
+          await onSubmit({
+            modeType: 'existing_parent',
+            parentId: formData.parentNodeId,
+            childId: targetNodeId,
+          });
+        } else {
+          // New profile: add_child, add_parent, or edit_profile
+          if (!formData.name) {
+            throw new Error('Name is required');
+          }
 
-        await onSubmit(submitPayload);
+          const linksArr = formData.socialLinks
+            ? formData.socialLinks.split(',').map((s) => s.trim()).filter(Boolean)
+            : [];
+
+          const submitPayload = {
+            name: formData.name,
+            dob: formData.dob || null,
+            bloodGroup: formData.bloodGroup,
+            gotram: formData.gotram,
+            mobileNumber: formData.mobileNumber,
+            email: formData.email,
+            socialLinks: linksArr,
+            profilePictureUrl: formData.profilePictureUrl,
+            isDeceased: formData.isDeceased,
+            dateOfDeath: formData.isDeceased ? (formData.dateOfDeath || null) : null,
+          };
+
+          if (mode === 'add_child') {
+            submitPayload.gender = parseInt(formData.gender);
+            submitPayload.parentId = targetNodeId || formData.parentId || null;
+          } else if (mode === 'add_parent') {
+            submitPayload.gender = parseInt(formData.gender);
+            submitPayload.childId = targetNodeId;
+          }
+
+          await onSubmit(submitPayload);
+        }
       }
       onClose();
     } catch (err) {
@@ -402,6 +488,7 @@ const NodeModal = ({
   const getTitle = () => {
     switch (mode) {
       case 'add_child': return 'Add Child Node';
+      case 'add_parent': return 'Add Parent Node';
       case 'add_spouse': return 'Add Spouse Node';
       case 'edit_profile': return 'Edit Member Profile';
       case 'link_user': return 'Link Account Access';
@@ -498,8 +585,67 @@ const NodeModal = ({
                 </div>
               )}
 
-              {/* RENDER FOR NEW PROFILE OR EDIT NODE OR CHILD */}
-              {(mode !== 'add_spouse' || spouseType === 'new') && (
+              {/* Child tab options */}
+              {mode === 'add_child' && nodes && nodes.length > 0 && (
+                <div className="col-span-2 border-b border-slate-800 pb-3 flex space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => setChildType('new')}
+                    className={`flex-1 py-2 rounded-xl text-xs font-semibold border transition-all ${
+                      childType === 'new'
+                        ? 'bg-emerald-950/40 text-emerald-400 border-emerald-500/50 shadow-md shadow-emerald-500/5'
+                        : 'bg-slate-950 text-slate-400 border-slate-800 hover:border-slate-700'
+                    }`}
+                  >
+                    New Profile
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setChildType('existing')}
+                    className={`flex-1 py-2 rounded-xl text-xs font-semibold border transition-all ${
+                      childType === 'existing'
+                        ? 'bg-emerald-950/40 text-emerald-400 border-emerald-500/50 shadow-md shadow-emerald-500/5'
+                        : 'bg-slate-950 text-slate-400 border-slate-800 hover:border-slate-700'
+                    }`}
+                  >
+                    Link Existing
+                  </button>
+                </div>
+              )}
+
+              {/* Parent tab options */}
+              {mode === 'add_parent' && nodes && nodes.length > 0 && (
+                <div className="col-span-2 border-b border-slate-800 pb-3 flex space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => setParentType('new')}
+                    className={`flex-1 py-2 rounded-xl text-xs font-semibold border transition-all ${
+                      parentType === 'new'
+                        ? 'bg-emerald-950/40 text-emerald-400 border-emerald-500/50 shadow-md shadow-emerald-500/5'
+                        : 'bg-slate-950 text-slate-400 border-slate-800 hover:border-slate-700'
+                    }`}
+                  >
+                    New Profile
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setParentType('existing')}
+                    className={`flex-1 py-2 rounded-xl text-xs font-semibold border transition-all ${
+                      parentType === 'existing'
+                        ? 'bg-emerald-950/40 text-emerald-400 border-emerald-500/50 shadow-md shadow-emerald-500/5'
+                        : 'bg-slate-950 text-slate-400 border-slate-800 hover:border-slate-700'
+                    }`}
+                  >
+                    Link Existing
+                  </button>
+                </div>
+              )}
+
+              {/* RENDER FOR NEW PROFILE OR EDIT NODE OR CHILD OR PARENT */}
+              {((mode === 'edit_profile') ||
+                (mode === 'add_spouse' && spouseType === 'new') ||
+                (mode === 'add_child' && childType === 'new') ||
+                (mode === 'add_parent' && parentType === 'new')) && (
                 <>
                   {/* Select Parent Node (Only shown when mode === 'add_child' and targetNodeId is null and nodes have length > 0) */}
                   {mode === 'add_child' && !targetNodeId && nodes && nodes.length > 0 && (
@@ -509,10 +655,9 @@ const NodeModal = ({
                         name="parentId"
                         value={formData.parentId}
                         onChange={handleInputChange}
-                        required
                         className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-350 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 cursor-pointer"
                       >
-                        <option value="">Select Parent Node</option>
+                        <option value="">None (Unconnected/Floating Node)</option>
                         {nodes.map((node) => (
                           <option key={node._id} value={node._id}>
                             {node.name} (Gen: {node.generationLevel} | Parity: {node.parity})
@@ -621,8 +766,8 @@ const NodeModal = ({
                     </div>
                   </div>
 
-                  {/* Gender (Only shown in add_child mode) */}
-                  {mode === 'add_child' && (
+                  {/* Gender (Shown in add_child and add_parent modes) */}
+                  {(mode === 'add_child' || mode === 'add_parent') && (
                     <div className="col-span-2">
                       <label className="text-[10px] text-slate-500 uppercase font-bold tracking-wider block mb-1">Gender</label>
                       <div className="flex items-center space-x-4">
@@ -785,6 +930,68 @@ const NodeModal = ({
                 </>
               )}
 
+              {/* RENDER FOR LINKING AN EXISTING CHILD */}
+              {mode === 'add_child' && childType === 'existing' && (
+                <div className="col-span-2 space-y-4">
+                  <p className="text-xs text-slate-400">
+                    Select a member from the current tree to establish a child relationship with <span className="font-bold text-slate-200">{targetNode?.name || 'the selected parent'}</span>.
+                  </p>
+                  <div>
+                    <label className="text-[10px] text-slate-500 uppercase font-bold tracking-wider block mb-1">Select Child Node</label>
+                    <select
+                      name="childNodeId"
+                      value={formData.childNodeId}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 cursor-pointer"
+                    >
+                      <option value="">Select Child Node</option>
+                      {getValidChildCandidates().map((node) => (
+                        <option key={node._id} value={node._id}>
+                          {node.name} (Gotram: {node.gotram || 'N/A'} | Parity: {node.parity} | Gen: {node.generationLevel})
+                        </option>
+                      ))}
+                    </select>
+                    {getValidChildCandidates().length === 0 && (
+                      <span className="text-[10px] text-amber-500 mt-1 block">
+                        No valid child candidates found in this tree.
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* RENDER FOR LINKING AN EXISTING PARENT */}
+              {mode === 'add_parent' && parentType === 'existing' && (
+                <div className="col-span-2 space-y-4">
+                  <p className="text-xs text-slate-400">
+                    Select a member from the current tree to establish a parent relationship with <span className="font-bold text-slate-200">{targetNode?.name || 'the selected child'}</span>.
+                  </p>
+                  <div>
+                    <label className="text-[10px] text-slate-500 uppercase font-bold tracking-wider block mb-1">Select Parent Node</label>
+                    <select
+                      name="parentNodeId"
+                      value={formData.parentNodeId}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 cursor-pointer"
+                    >
+                      <option value="">Select Parent Node</option>
+                      {getValidParentCandidates().map((node) => (
+                        <option key={node._id} value={node._id}>
+                          {node.name} (Gotram: {node.gotram || 'N/A'} | Parity: {node.parity} | Gen: {node.generationLevel})
+                        </option>
+                      ))}
+                    </select>
+                    {getValidParentCandidates().length === 0 && (
+                      <span className="text-[10px] text-amber-500 mt-1 block">
+                        No valid parent candidates found in this tree.
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* RENDER FOR LINKING AN EXISTING MEMBER */}
               {mode === 'add_spouse' && spouseType === 'existing' && (
                 <div className="col-span-2 space-y-4">
@@ -934,7 +1141,13 @@ const NodeModal = ({
             </button>
             <button
               type="submit"
-              disabled={loading || (spouseType === 'cross_tree' && !formData.crossTreeNodeId) || (spouseType === 'existing' && !formData.spouseNodeId)}
+              disabled={
+                loading || 
+                (mode === 'add_spouse' && spouseType === 'cross_tree' && !formData.crossTreeNodeId) || 
+                (mode === 'add_spouse' && spouseType === 'existing' && !formData.spouseNodeId) ||
+                (mode === 'add_child' && childType === 'existing' && !formData.childNodeId) ||
+                (mode === 'add_parent' && parentType === 'existing' && !formData.parentNodeId)
+              }
               className="flex items-center space-x-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-4.5 py-2 rounded-xl transition-all duration-300 hover:shadow-lg hover:shadow-emerald-600/10 active:scale-95 disabled:opacity-50 cursor-pointer"
             >
               <Save size={14} />

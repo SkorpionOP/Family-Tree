@@ -67,6 +67,140 @@ const getYearDiff = (date1, date2) => {
   return diffYears;
 };
 
+// Helper to dynamically recalculate generation levels and parities for a tree
+const recalculateTreeGenerations = async (treeId) => {
+  const Node = require('../models/Node');
+  const Edge = require('../models/Edge');
+
+  try {
+    const nodes = await Node.find({ treeId });
+    if (nodes.length === 0) return;
+
+    const edges = await Edge.find({ treeId });
+
+    // Build relationship maps
+    const childrenOf = {};
+    const parentsOf = {};
+    const spousesOf = {};
+
+    nodes.forEach(node => {
+      const idStr = node._id.toString();
+      childrenOf[idStr] = [];
+      parentsOf[idStr] = [];
+      spousesOf[idStr] = [];
+    });
+
+    edges.forEach(edge => {
+      const src = edge.sourceNodeId.toString();
+      const dst = edge.targetNodeId.toString();
+
+      if (edge.relationshipType === 'parent_child') {
+        if (childrenOf[src]) childrenOf[src].push(dst);
+        if (parentsOf[dst]) parentsOf[dst].push(src);
+      } else if (edge.relationshipType === 'spouse') {
+        if (spousesOf[src]) spousesOf[src].push(dst);
+        if (spousesOf[dst]) spousesOf[dst].push(src);
+      }
+    });
+
+    // Find absolute roots (nodes with no parents)
+    const roots = nodes.filter(node => parentsOf[node._id.toString()].length === 0);
+
+    const queue = [];
+    const visited = new Set();
+    const nodeLevels = {};
+    const nodeParities = {};
+
+    if (roots.length > 0) {
+      roots.forEach(root => {
+        const idStr = root._id.toString();
+        nodeLevels[idStr] = 0;
+        nodeParities[idStr] = root.parity || 0;
+        queue.push(idStr);
+        visited.add(idStr);
+      });
+    } else {
+      const firstNode = nodes[0];
+      const idStr = firstNode._id.toString();
+      nodeLevels[idStr] = 0;
+      nodeParities[idStr] = firstNode.parity || 0;
+      queue.push(idStr);
+      visited.add(idStr);
+    }
+
+    while (queue.length > 0) {
+      const currId = queue.shift();
+      const currLevel = nodeLevels[currId];
+      const currParity = nodeParities[currId];
+      const currNode = nodes.find(n => n._id.toString() === currId);
+      const currGender = currNode ? currNode.gender : 0;
+
+      // Process spouses
+      const spouses = spousesOf[currId] || [];
+      spouses.forEach(spouseId => {
+        if (!visited.has(spouseId)) {
+          nodeLevels[spouseId] = currLevel;
+          nodeParities[spouseId] = 1 - currParity;
+          visited.add(spouseId);
+          queue.push(spouseId);
+        }
+      });
+
+      // Process children
+      const children = childrenOf[currId] || [];
+      children.forEach(childId => {
+        const childLevel = currLevel + 1;
+        const childParity = (currParity + (1 - currGender)) % 2;
+
+        if (!visited.has(childId)) {
+          nodeLevels[childId] = childLevel;
+          nodeParities[childId] = childParity;
+          visited.add(childId);
+          queue.push(childId);
+        } else {
+          if (childLevel > nodeLevels[childId]) {
+            nodeLevels[childId] = childLevel;
+            nodeParities[childId] = childParity;
+            queue.push(childId);
+          }
+        }
+      });
+    }
+
+    // Shift levels so that minLevel is 0
+    let minLevel = 0;
+    Object.values(nodeLevels).forEach(lvl => {
+      if (lvl < minLevel) minLevel = lvl;
+    });
+
+    const shift = minLevel < 0 ? -minLevel : 0;
+
+    // Save changes
+    for (const node of nodes) {
+      const idStr = node._id.toString();
+      let changed = false;
+
+      const newLevel = nodeLevels[idStr] !== undefined ? nodeLevels[idStr] + shift : 0;
+      const newParity = nodeParities[idStr] !== undefined ? nodeParities[idStr] : 0;
+
+      if (node.generationLevel !== newLevel) {
+        node.generationLevel = newLevel;
+        changed = true;
+      }
+      if (node.parity !== newParity) {
+        node.parity = newParity;
+        changed = true;
+      }
+
+      if (changed) {
+        await node.save();
+      }
+    }
+  } catch (err) {
+    console.error('Error recalculating tree generations:', err);
+  }
+};
+
 // @desc    Get complete tree nodes and edges for visualization
 // @route   GET /api/kinship/:treeId/graph
 // @access  Private
@@ -228,13 +362,39 @@ const createNode = async (req, res) => {
     let generationLevel = 0;
     let parity = 0;
 
-    const existingNodesCount = await Node.countDocuments({ treeId });
+    const { childId } = req.body;
 
-    if (existingNodesCount > 0) {
-      if (!parentId) {
-        return res.status(400).json({ message: 'Parent ID is required for non-root nodes' });
+    if (childId) {
+      // Adding a parent to an existing child node
+      const childNode = await Node.findOne({ _id: childId, treeId });
+      if (!childNode) {
+        return res.status(404).json({ message: 'Child node not found' });
       }
 
+      // Check if child already has 2 parents
+      const existingParents = await Edge.find({ treeId, targetNodeId: childId, relationshipType: 'parent_child' });
+      if (existingParents.length >= 2) {
+        return res.status(400).json({ message: 'This child already has two parents' });
+      }
+      if (existingParents.length > 0) {
+        const parent1 = await Node.findById(existingParents[0].sourceNodeId);
+        if (parent1 && parent1.gender === gender) {
+          return res.status(400).json({ message: `This child already has a ${gender === 1 ? 'father' : 'mother'}` });
+        }
+      }
+
+      // Age difference validation
+      if (dob && childNode.dob) {
+        const ageDiff = getYearDiff(dob, childNode.dob);
+        if (ageDiff === null || ageDiff < 15) {
+          return res.status(400).json({ message: 'Validation failed: The parent must be at least 15 years older than the child' });
+        }
+      }
+
+      generationLevel = childNode.generationLevel - 1;
+      parity = (childNode.parity - (1 - gender) + 2) % 2;
+    } else if (parentId) {
+      // Adding a child to an existing parent node
       const parentNode = await Node.findOne({ _id: parentId, treeId });
       if (!parentNode) {
         return res.status(404).json({ message: 'Parent node not found' });
@@ -251,7 +411,7 @@ const createNode = async (req, res) => {
         return res.status(400).json({ message: 'Validation failed: A single parent cannot have children. Please add a spouse first.' });
       }
 
-      // Validation: The age difference between parent and child must be at least 15 years
+      // Age difference validation
       if (dob && parentNode.dob) {
         const ageDiff = getYearDiff(parentNode.dob, dob);
         if (ageDiff === null || ageDiff < 15) {
@@ -259,20 +419,17 @@ const createNode = async (req, res) => {
         }
       }
 
-      // Generation level: generationLevel_child = generationLevel_parent + 1
       generationLevel = parentNode.generationLevel + 1;
-
-      // Parity: P_child = (P_parent + (1 - G_parent)) % 2
       parity = (parentNode.parity + (1 - parentNode.gender)) % 2;
     } else {
-      // Root node
+      // Floating / Root node created at will
       generationLevel = 0;
-      parity = 0; // default parity for root
+      parity = 0;
     }
 
     // Gotram rule: child inherits parent's gotram
     let childGotram = gotram || '';
-    if (existingNodesCount > 0) {
+    if (parentId) {
       const parentNode = await Node.findOne({ _id: parentId, treeId });
       if (parentNode) {
         childGotram = parentNode.gotram || '';
@@ -296,8 +453,45 @@ const createNode = async (req, res) => {
       dateOfDeath: dateOfDeath ? new Date(dateOfDeath) : null
     });
 
-    // Create edge if parentId exists
-    if (parentId) {
+    if (childId) {
+      // Create parent_child edge
+      await Edge.create({
+        treeId,
+        sourceNodeId: newNode._id,
+        targetNodeId: childId,
+        relationshipType: 'parent_child'
+      });
+
+      // If the child already has another parent, link them as spouses!
+      const otherParents = await Edge.find({
+        treeId,
+        targetNodeId: childId,
+        relationshipType: 'parent_child',
+        sourceNodeId: { $ne: newNode._id }
+      });
+
+      if (otherParents.length > 0) {
+        const spouseId = otherParents[0].sourceNodeId;
+        await Edge.create({
+          treeId,
+          sourceNodeId: spouseId,
+          targetNodeId: newNode._id,
+          relationshipType: 'spouse'
+        });
+
+        // Sync gotrams
+        const spouseNode = await Node.findById(spouseId);
+        if (spouseNode) {
+          if (spouseNode.gender === 1) {
+            newNode.gotram = spouseNode.gotram;
+            await newNode.save();
+          } else if (gender === 1) {
+            spouseNode.gotram = newNode.gotram;
+            await spouseNode.save();
+          }
+        }
+      }
+    } else if (parentId) {
       await Edge.create({
         treeId,
         sourceNodeId: parentId,
@@ -317,7 +511,6 @@ const createNode = async (req, res) => {
           ? edge.targetNodeId
           : edge.sourceNodeId;
 
-        // Create parent_child edge from spouse to child
         await Edge.create({
           treeId,
           sourceNodeId: spouseId,
@@ -326,6 +519,9 @@ const createNode = async (req, res) => {
         });
       }
     }
+
+    // Dynamic generation levels recalculation
+    await recalculateTreeGenerations(treeId);
 
     // Log the activity
     await ActivityLog.create({
@@ -630,6 +826,8 @@ const createSpouseNode = async (req, res) => {
       });
     }
 
+    await recalculateTreeGenerations(treeId);
+
     res.status(201).json(spouseNode);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -776,6 +974,166 @@ const createMarriageEdge = async (req, res) => {
           { nodeId: nodeB._id, gotram: prevNodeBGotram }
         ]
       }
+    });
+
+    await recalculateTreeGenerations(treeId);
+
+    res.status(201).json(edge);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Create a parent-child edge between two pre-existing nodes with validation
+// @route   POST /api/kinship/:treeId/edges/parent-child
+// @access  Private (Admin or Sub-Admin)
+const createParentChildEdge = async (req, res) => {
+  const { treeId } = req.params;
+  const { parentId, childId } = req.body;
+
+  if (parentId === childId) {
+    return res.status(400).json({ message: 'A node cannot be its own parent' });
+  }
+
+  try {
+    const tree = await Tree.findById(treeId);
+    if (!tree) {
+      return res.status(404).json({ message: 'Tree not found' });
+    }
+
+    const role = await getUserRoleInTree(tree, req.user.id);
+    if (role !== 'Admin' && role !== 'Sub-Admin') {
+      return res.status(403).json({ message: 'Only Admins or Sub-Admins can create relationships' });
+    }
+
+    const parentNode = await Node.findOne({ _id: parentId, treeId });
+    const childNode = await Node.findOne({ _id: childId, treeId });
+
+    if (!parentNode || !childNode) {
+      return res.status(404).json({ message: 'Parent or child node not found' });
+    }
+
+    // Check if edge already exists
+    const existingEdge = await Edge.findOne({
+      treeId,
+      sourceNodeId: parentId,
+      targetNodeId: childId,
+      relationshipType: 'parent_child'
+    });
+
+    if (existingEdge) {
+      return res.status(400).json({ message: 'This relationship already exists' });
+    }
+
+    // Check if this child already has two parents
+    const existingParents = await Edge.find({
+      treeId,
+      targetNodeId: childId,
+      relationshipType: 'parent_child'
+    });
+
+    if (existingParents.length >= 2) {
+      return res.status(400).json({ message: 'A child cannot have more than two parents' });
+    }
+
+    // Check if there is already a parent of the same gender
+    if (existingParents.length > 0) {
+      const parent1 = await Node.findById(existingParents[0].sourceNodeId);
+      if (parent1 && parent1.gender === parentNode.gender) {
+        return res.status(400).json({ message: `This child already has a ${parentNode.gender === 1 ? 'father' : 'mother'}` });
+      }
+    }
+
+    // Validation: age difference of at least 15 years
+    if (parentNode.dob && childNode.dob) {
+      const ageDiff = getYearDiff(parentNode.dob, childNode.dob);
+      if (ageDiff === null || ageDiff < 15) {
+        return res.status(400).json({ message: 'Validation failed: The age difference between parent and child must be at least 15 years' });
+      }
+    }
+
+    // Create parent_child edge
+    const edge = await Edge.create({
+      treeId,
+      sourceNodeId: parentId,
+      targetNodeId: childId,
+      relationshipType: 'parent_child'
+    });
+
+    // If the parent has a spouse, automatically link them too
+    const spouseEdges = await Edge.find({
+      treeId,
+      relationshipType: 'spouse',
+      $or: [{ sourceNodeId: parentId }, { targetNodeId: parentId }]
+    });
+
+    for (const e of spouseEdges) {
+      const spouseId = e.sourceNodeId.toString() === parentId.toString()
+        ? e.targetNodeId
+        : e.sourceNodeId;
+
+      const alreadyLinked = await Edge.findOne({
+        treeId,
+        sourceNodeId: spouseId,
+        targetNodeId: childId,
+        relationshipType: 'parent_child'
+      });
+
+      if (!alreadyLinked) {
+        await Edge.create({
+          treeId,
+          sourceNodeId: spouseId,
+          targetNodeId: childId,
+          relationshipType: 'parent_child'
+        });
+      }
+    }
+
+    // If the child already has another parent, link them as spouses!
+    if (existingParents.length > 0) {
+      const spouseId = existingParents[0].sourceNodeId;
+      
+      const spouseEdgeExists = await Edge.findOne({
+        treeId,
+        relationshipType: 'spouse',
+        $or: [
+          { sourceNodeId: parentId, targetNodeId: spouseId },
+          { sourceNodeId: spouseId, targetNodeId: parentId }
+        ]
+      });
+
+      if (!spouseEdgeExists) {
+        await Edge.create({
+          treeId,
+          sourceNodeId: parentId,
+          targetNodeId: spouseId,
+          relationshipType: 'spouse'
+        });
+
+        // Sync gotrams
+        const spouseNode = await Node.findById(spouseId);
+        if (spouseNode) {
+          if (spouseNode.gender === 1) {
+            parentNode.gotram = spouseNode.gotram;
+            await parentNode.save();
+          } else if (parentNode.gender === 1) {
+            spouseNode.gotram = parentNode.gotram;
+            await spouseNode.save();
+          }
+        }
+      }
+    }
+
+    // Dynamically recalculate generation levels and parities
+    await recalculateTreeGenerations(treeId);
+
+    // Log the activity
+    await ActivityLog.create({
+      treeId,
+      userId: req.user.id,
+      userName: req.user.name || req.user.email,
+      action: 'CREATE_RELATIONSHIP',
+      description: `${req.user.name || req.user.email} linked parent "${parentNode.name}" to child "${childNode.name}"`
     });
 
     res.status(201).json(edge);
@@ -1008,6 +1366,11 @@ const updateNode = async (req, res) => {
       }
     });
 
+    // Recalculate tree generations in case DOB changed
+    if (dob !== undefined) {
+      await recalculateTreeGenerations(treeId);
+    }
+
     res.status(200).json(updatedNode);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -1063,6 +1426,8 @@ const deleteNode = async (req, res) => {
         edgesData: edges
       }
     });
+
+    await recalculateTreeGenerations(treeId);
 
     res.status(200).json({ message: 'Node and its relationship linkages deleted' });
   } catch (error) {
@@ -1574,6 +1939,7 @@ module.exports = {
   createNode,
   createSpouseNode,
   createMarriageEdge,
+  createParentChildEdge,
   updateNode,
   deleteNode,
   classifyKinshipRelation,
