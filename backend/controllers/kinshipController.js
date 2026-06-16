@@ -103,8 +103,17 @@ const recalculateTreeGenerations = async (treeId) => {
       }
     });
 
-    // Find absolute roots (nodes with no parents)
-    const roots = nodes.filter(node => parentsOf[node._id.toString()].length === 0);
+    // Find absolute roots (nodes with no parents, and not married to someone who has parents)
+    const roots = nodes.filter(node => {
+      const idStr = node._id.toString();
+      if (parentsOf[idStr].length > 0) return false;
+      
+      const spouses = spousesOf[idStr] || [];
+      const spouseHasParents = spouses.some(spouseId => parentsOf[spouseId].length > 0);
+      if (spouseHasParents) return false;
+      
+      return true;
+    });
 
     const queue = [];
     const visited = new Set();
@@ -135,14 +144,20 @@ const recalculateTreeGenerations = async (treeId) => {
       const currNode = nodes.find(n => n._id.toString() === currId);
       const currGender = currNode ? currNode.gender : 0;
 
-      // Process spouses
+      // Process spouses: must be in same generation level
       const spouses = spousesOf[currId] || [];
       spouses.forEach(spouseId => {
         if (!visited.has(spouseId)) {
           nodeLevels[spouseId] = currLevel;
-          nodeParities[spouseId] = 1 - currParity;
+          nodeParities[spouseId] = (1 - currParity + 2) % 2;
           visited.add(spouseId);
           queue.push(spouseId);
+        } else {
+          if (nodeLevels[spouseId] !== currLevel) {
+            nodeLevels[spouseId] = currLevel;
+            nodeParities[spouseId] = (1 - currParity + 2) % 2;
+            queue.push(spouseId);
+          }
         }
       });
 
