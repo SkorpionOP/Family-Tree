@@ -16,7 +16,8 @@ const Profile = () => {
     gotram: '',
     mobileNumber: '',
     profilePictureUrl: '',
-    socialLinks: ['']
+    socialLinks: [''],
+    marriageDate: ''
   });
 
   const [syncSettings, setSyncSettings] = useState({
@@ -27,7 +28,8 @@ const Profile = () => {
     mobileNumber: true,
     email: true,
     profilePictureUrl: true,
-    socialLinks: true
+    socialLinks: true,
+    marriageDate: true
   });
 
   // Email states
@@ -49,7 +51,8 @@ const Profile = () => {
         gotram: user.profile?.gotram || '',
         mobileNumber: user.profile?.mobileNumber || '',
         profilePictureUrl: user.profile?.profilePictureUrl || '',
-        socialLinks: user.profile?.socialLinks?.length > 0 ? [...user.profile.socialLinks] : ['']
+        socialLinks: user.profile?.socialLinks?.length > 0 ? [...user.profile.socialLinks] : [''],
+        marriageDate: user.profile?.marriageDate ? new Date(user.profile.marriageDate).toISOString().split('T')[0] : ''
       });
       setEmailInput(user.email || '');
       setIsEditingEmail(false);
@@ -62,7 +65,8 @@ const Profile = () => {
           mobileNumber: user.syncSettings.mobileNumber !== false,
           email: user.syncSettings.email !== false,
           profilePictureUrl: user.syncSettings.profilePictureUrl !== false,
-          socialLinks: user.syncSettings.socialLinks !== false
+          socialLinks: user.syncSettings.socialLinks !== false,
+          marriageDate: user.syncSettings.marriageDate !== false
         });
       }
     }
@@ -70,9 +74,32 @@ const Profile = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    let finalValue = value;
+
+    if (name === 'name') {
+      // Allow only letters and spaces
+      finalValue = value.replace(/[^A-Za-z\s]/g, '');
+    } else if (name === 'mobileNumber') {
+      // Keep only digits and '+'
+      let val = value.replace(/[^\d+]/g, '');
+      if (val && !val.startsWith('+')) {
+        if (val.startsWith('91') && val.length > 2) {
+          val = '+' + val;
+        } else if (/^[6-9]/.test(val)) {
+          val = '+91' + val;
+        }
+      }
+      if (val.startsWith('+91')) {
+        val = val.slice(0, 13);
+      } else {
+        val = val.slice(0, 10);
+      }
+      finalValue = val;
+    }
+
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: finalValue
     }));
   };
 
@@ -176,6 +203,30 @@ const Profile = () => {
     // Clean social links
     const cleanedSocialLinks = formData.socialLinks.filter(link => link.trim() !== '');
 
+    // Validate Name (only letters and spaces)
+    if (formData.name) {
+      const nameRegex = /^[A-Za-z\s]+$/;
+      if (!nameRegex.test(formData.name)) {
+        setMessage({ type: 'error', text: 'Name can only contain letters and spaces.' });
+        setLoading(false);
+        return;
+      }
+    }
+
+    // Validate and format Mobile Number
+    let finalMobile = formData.mobileNumber ? formData.mobileNumber.trim() : '';
+    if (finalMobile) {
+      if (finalMobile.length === 10 && !finalMobile.startsWith('+')) {
+        finalMobile = '+91' + finalMobile;
+      }
+      const mobileRegex = /^\+91[6-9]\d{9}$/;
+      if (!mobileRegex.test(finalMobile)) {
+        setMessage({ type: 'error', text: 'Mobile number must start with +91 followed by a valid 10-digit number (cannot start with 0-5).' });
+        setLoading(false);
+        return;
+      }
+    }
+
     // Validate DOB is not in the future
     if (formData.dob) {
       const selectedDob = new Date(formData.dob);
@@ -190,6 +241,7 @@ const Profile = () => {
       await api.auth.updateProfile(
         {
           ...formData,
+          mobileNumber: finalMobile,
           socialLinks: cleanedSocialLinks
         },
         syncSettings
@@ -389,6 +441,22 @@ const Profile = () => {
                 </div>
               </div>
 
+              {/* Marriage Date */}
+              <div className="space-y-1.5 md:col-span-2">
+                <label className="text-xs font-semibold text-slate-400">Marriage Date</label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-500"><Calendar size={15} /></span>
+                  <input
+                    type="date"
+                    name="marriageDate"
+                    value={formData.marriageDate}
+                    onChange={handleChange}
+                    max={new Date().toISOString().split('T')[0]}
+                    className="input-field pl-10"
+                  />
+                </div>
+              </div>
+
               {/* Profile Picture Upload & URL */}
               <div className="space-y-3 md:col-span-2 border-t border-slate-700/20 pt-5 mt-2">
                 <label className="text-xs font-semibold text-slate-400 block">Profile Picture</label>
@@ -539,6 +607,7 @@ const Profile = () => {
               {[
                 { field: 'name', label: 'Sync Name' },
                 { field: 'dob', label: 'Sync Date of Birth' },
+                { field: 'marriageDate', label: 'Sync Marriage Date' },
                 { field: 'bloodGroup', label: 'Sync Blood Group' },
                 { field: 'gotram', label: 'Sync Gotram' },
                 { field: 'mobileNumber', label: 'Sync Mobile Number' },

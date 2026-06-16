@@ -108,7 +108,14 @@ const NodeModal = ({
   const targetNode = nodes && targetNodeId ? nodes.find((n) => n._id === targetNodeId) : null;
 
   const hasSpouse = mode === 'edit_profile' && nodeData && edges && edges.some(
-    e => e.relationshipType === 'spouse' && (e.source === nodeData._id || e.target === nodeData._id)
+    e => e.relationshipType === 'spouse' && (
+      e.source === nodeData._id || 
+      e.target === nodeData._id ||
+      e.sourceNodeId === nodeData._id ||
+      e.targetNodeId === nodeData._id ||
+      (e.sourceNodeId && e.sourceNodeId._id === nodeData._id) ||
+      (e.targetNodeId && e.targetNodeId._id === nodeData._id)
+    )
   );
 
   // Sync edit data and reset states
@@ -209,7 +216,30 @@ const NodeModal = ({
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    let finalValue = value;
+
+    if (name === 'name') {
+      // Allow only letters and spaces
+      finalValue = value.replace(/[^A-Za-z\s]/g, '');
+    } else if (name === 'mobileNumber') {
+      // Keep only digits and '+'
+      let val = value.replace(/[^\d+]/g, '');
+      if (val && !val.startsWith('+')) {
+        if (val.startsWith('91') && val.length > 2) {
+          val = '+' + val;
+        } else if (/^[6-9]/.test(val)) {
+          val = '+91' + val;
+        }
+      }
+      if (val.startsWith('+91')) {
+        val = val.slice(0, 13);
+      } else {
+        val = val.slice(0, 10);
+      }
+      finalValue = val;
+    }
+
+    setFormData((prev) => ({ ...prev, [name]: finalValue }));
   };
 
   const handleGenderChange = (val) => {
@@ -490,6 +520,26 @@ const NodeModal = ({
     setError('');
 
     try {
+      // Validate name (only letters and spaces)
+      if (formData.name) {
+        const nameRegex = /^[A-Za-z\s]+$/;
+        if (!nameRegex.test(formData.name)) {
+          throw new Error('Name can only contain letters and spaces.');
+        }
+      }
+
+      // Validate mobile number
+      let finalMobile = formData.mobileNumber ? formData.mobileNumber.trim() : '';
+      if (finalMobile) {
+        if (finalMobile.length === 10 && !finalMobile.startsWith('+')) {
+          finalMobile = '+91' + finalMobile;
+        }
+        const mobileRegex = /^\+91[6-9]\d{9}$/;
+        if (!mobileRegex.test(finalMobile)) {
+          throw new Error('Mobile number must start with +91 followed by a valid 10-digit number (cannot start with 0-5).');
+        }
+      }
+
       // Validate dates
       if (formData.dob && new Date(formData.dob) > new Date()) {
         throw new Error('Date of birth cannot be in the future.');
@@ -543,7 +593,7 @@ const NodeModal = ({
             dob: formData.dob || null,
             bloodGroup: formData.bloodGroup,
             gotram: formData.gotram,
-            mobileNumber: formData.mobileNumber,
+            mobileNumber: finalMobile,
             email: formData.email,
             socialLinks: linksArr,
             profilePictureUrl: formData.profilePictureUrl,
@@ -588,7 +638,7 @@ const NodeModal = ({
             dob: formData.dob || null,
             bloodGroup: formData.bloodGroup,
             gotram: formData.gotram,
-            mobileNumber: formData.mobileNumber,
+            mobileNumber: finalMobile,
             email: formData.email,
             socialLinks: linksArr,
             profilePictureUrl: formData.profilePictureUrl,

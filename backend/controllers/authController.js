@@ -168,6 +168,32 @@ const syncUserToNodes = async (userId, customNodeId = null) => {
       node.socialLinks = user.profile.socialLinks;
       changed = true;
     }
+    if (user.syncSettings.marriageDate) {
+      const uMarriage = user.profile.marriageDate ? new Date(user.profile.marriageDate).getTime() : null;
+      const nMarriage = node.marriageDate ? new Date(node.marriageDate).getTime() : null;
+      if (uMarriage !== nMarriage) {
+        node.marriageDate = user.profile.marriageDate ? new Date(user.profile.marriageDate) : null;
+        changed = true;
+
+        // Also sync to spouse node in the same tree
+        const Edge = require('../models/Edge');
+        const spouseEdge = await Edge.findOne({
+          treeId: node.treeId,
+          relationshipType: 'spouse',
+          $or: [{ sourceNodeId: node._id }, { targetNodeId: node._id }]
+        });
+        if (spouseEdge) {
+          const spouseId = spouseEdge.sourceNodeId.toString() === node._id.toString() 
+            ? spouseEdge.targetNodeId 
+            : spouseEdge.sourceNodeId;
+          const spouse = await Node.findOne({ _id: spouseId, treeId: node.treeId });
+          if (spouse) {
+            spouse.marriageDate = node.marriageDate;
+            await spouse.save();
+          }
+        }
+      }
+    }
 
     if (changed) {
       await node.save();
@@ -188,12 +214,39 @@ const updateProfile = async (req, res) => {
     }
 
     if (profile) {
+      if (profile.name !== undefined && profile.name) {
+        const nameRegex = /^[A-Za-z\s]+$/;
+        if (!nameRegex.test(profile.name)) {
+          return res.status(400).json({ message: 'Validation failed: Name can only contain letters and spaces' });
+        }
+      }
+
+      if (profile.mobileNumber !== undefined && profile.mobileNumber) {
+        let formattedMobile = profile.mobileNumber;
+        if (formattedMobile.length === 10 && !formattedMobile.startsWith('+')) {
+          formattedMobile = '+91' + formattedMobile;
+        }
+        const mobileRegex = /^\+91[6-9]\d{9}$/;
+        if (!mobileRegex.test(formattedMobile)) {
+          return res.status(400).json({ message: 'Validation failed: Mobile number must start with +91 followed by a valid 10-digit number (cannot start with 0-5)' });
+        }
+        profile.mobileNumber = formattedMobile;
+      }
+
       if (profile.dob) {
         const selectedDob = new Date(profile.dob);
         if (selectedDob > new Date()) {
           return res.status(400).json({ message: 'Date of birth cannot be in the future.' });
         }
       }
+
+      if (profile.marriageDate) {
+        const selectedMarriage = new Date(profile.marriageDate);
+        if (selectedMarriage > new Date()) {
+          return res.status(400).json({ message: 'Marriage date cannot be in the future.' });
+        }
+      }
+
       user.profile = {
         ...user.profile,
         name: profile.name !== undefined ? profile.name : user.profile.name,
@@ -202,7 +255,8 @@ const updateProfile = async (req, res) => {
         gotram: profile.gotram !== undefined ? profile.gotram : user.profile.gotram,
         mobileNumber: profile.mobileNumber !== undefined ? profile.mobileNumber : user.profile.mobileNumber,
         profilePictureUrl: profile.profilePictureUrl !== undefined ? profile.profilePictureUrl : user.profile.profilePictureUrl,
-        socialLinks: profile.socialLinks !== undefined ? profile.socialLinks : user.profile.socialLinks
+        socialLinks: profile.socialLinks !== undefined ? profile.socialLinks : user.profile.socialLinks,
+        marriageDate: profile.marriageDate !== undefined ? (profile.marriageDate ? new Date(profile.marriageDate) : null) : user.profile.marriageDate
       };
       if (profile.mobileNumber !== undefined) {
         user.mobileVerified = true;
@@ -219,7 +273,8 @@ const updateProfile = async (req, res) => {
         mobileNumber: syncSettings.mobileNumber !== undefined ? syncSettings.mobileNumber : user.syncSettings.mobileNumber,
         email: syncSettings.email !== undefined ? syncSettings.email : user.syncSettings.email,
         profilePictureUrl: syncSettings.profilePictureUrl !== undefined ? syncSettings.profilePictureUrl : user.syncSettings.profilePictureUrl,
-        socialLinks: syncSettings.socialLinks !== undefined ? syncSettings.socialLinks : user.syncSettings.socialLinks
+        socialLinks: syncSettings.socialLinks !== undefined ? syncSettings.socialLinks : user.syncSettings.socialLinks,
+        marriageDate: syncSettings.marriageDate !== undefined ? syncSettings.marriageDate : user.syncSettings.marriageDate
       };
     }
 
