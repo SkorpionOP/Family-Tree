@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, X, User, Heart, Compass, Smartphone, Calendar, Link as LinkIcon, RefreshCw, Layers, GitBranch, Plus, Shield, LogOut, Trash2, Copy, Check, Gift } from 'lucide-react';
+import { Search, Filter, X, User, Heart, Compass, Smartphone, Calendar, Link as LinkIcon, Compass as CompassIcon, RefreshCw, Layers, GitBranch, Plus, Shield, LogOut, Trash2, Gift, Copy, Check } from 'lucide-react';
 
 const Sidebar = ({
   nodes,

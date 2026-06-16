@@ -32,6 +32,27 @@ export const AuthProvider = ({ children }) => {
     return () => window.removeEventListener('auth-unauthorized', handleUnauthorized);
   }, []);
 
+  // Log out the user on the backend on page unload (refresh, tab close, navigation)
+  useEffect(() => {
+    const handleUnload = () => {
+      const token = api.getToken();
+      if (token) {
+        fetch('https://family-tree-lica.onrender.com/api/auth/logout', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'X-Tunnel-Skip-AntiSpam': 'true'
+          },
+          keepalive: true
+        }).catch(() => {});
+      }
+    };
+
+    window.addEventListener('beforeunload', handleUnload);
+    return () => window.removeEventListener('beforeunload', handleUnload);
+  }, []);
+
   const fetchUser = async () => {
     const token = api.getToken();
     if (!token) {
