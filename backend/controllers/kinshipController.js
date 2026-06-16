@@ -212,6 +212,19 @@ const createNode = async (req, res) => {
       return res.status(403).json({ message: 'Only Admins or Sub-Admins can create nodes' });
     }
 
+    // Validation: DOB and Date of Death cannot be in the future
+    if (dob && new Date(dob) > new Date()) {
+      return res.status(400).json({ message: 'Validation failed: Date of birth cannot be in the future' });
+    }
+    if (isDeceased && dateOfDeath) {
+      if (new Date(dateOfDeath) > new Date()) {
+        return res.status(400).json({ message: 'Validation failed: Date of death cannot be in the future' });
+      }
+      if (dob && new Date(dateOfDeath) < new Date(dob)) {
+        return res.status(400).json({ message: 'Validation failed: Date of death cannot be before date of birth' });
+      }
+    }
+
     let generationLevel = 0;
     let parity = 0;
 
@@ -351,6 +364,19 @@ const createSpouseNode = async (req, res) => {
     const role = await getUserRoleInTree(tree, req.user.id);
     if (role !== 'Admin' && role !== 'Sub-Admin') {
       return res.status(403).json({ message: 'Only Admins or Sub-Admins can add spouses' });
+    }
+
+    // Validation: DOB and Date of Death cannot be in the future
+    if (dob && new Date(dob) > new Date()) {
+      return res.status(400).json({ message: 'Validation failed: Date of birth cannot be in the future' });
+    }
+    if (isDeceased && dateOfDeath) {
+      if (new Date(dateOfDeath) > new Date()) {
+        return res.status(400).json({ message: 'Validation failed: Date of death cannot be in the future' });
+      }
+      if (dob && new Date(dateOfDeath) < new Date(dob)) {
+        return res.status(400).json({ message: 'Validation failed: Date of death cannot be before date of birth' });
+      }
     }
 
     const existingNode = await Node.findOne({ _id: existingNodeId, treeId });
@@ -804,6 +830,19 @@ const updateNode = async (req, res) => {
     const targetDob = dob !== undefined ? dob : node.dob;
     const targetDod = dateOfDeath !== undefined ? dateOfDeath : node.dateOfDeath;
     const targetIsDeceased = isDeceased !== undefined ? isDeceased : node.isDeceased;
+
+    // Validation: DOB and Date of Death cannot be in the future
+    if (targetDob && new Date(targetDob) > new Date()) {
+      return res.status(400).json({ message: 'Validation failed: Date of birth cannot be in the future' });
+    }
+    if (targetIsDeceased && targetDod) {
+      if (new Date(targetDod) > new Date()) {
+        return res.status(400).json({ message: 'Validation failed: Date of death cannot be in the future' });
+      }
+      if (targetDob && new Date(targetDod) < new Date(targetDob)) {
+        return res.status(400).json({ message: 'Validation failed: Date of death cannot be before date of birth' });
+      }
+    }
 
     const hasSpouseEdge = await Edge.findOne({
       treeId,

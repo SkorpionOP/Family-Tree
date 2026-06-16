@@ -15,9 +15,6 @@ const {
   updateProfile, 
   googleLogin, 
   firebaseLogin,
-  getTelegramVerificationUrl,
-  getTelegramVerificationStatus,
-  handleTelegramWebhook,
   uploadProfilePicture
 } = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
@@ -28,9 +25,6 @@ router.post('/google', googleLogin);
 router.post('/firebase-login', firebaseLogin);
 router.get('/me', protect, getMe);
 router.put('/profile', protect, updateProfile);
-router.get('/telegram-url', protect, getTelegramVerificationUrl);
-router.get('/telegram-status', protect, getTelegramVerificationStatus);
-router.post('/telegram-webhook', handleTelegramWebhook);
 router.post('/upload', protect, upload.single('image'), uploadProfilePicture);
 
 module.exports = router;

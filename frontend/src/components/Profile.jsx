@@ -36,24 +36,9 @@ const Profile = () => {
   const [sendingEmailVerification, setSendingEmailVerification] = useState(false);
   const [emailMessage, setEmailMessage] = useState(null);
 
-  // Telegram verification states
-  const [isVerifyingTelegram, setIsVerifyingTelegram] = useState(false);
-  const [telegramUrl, setTelegramUrl] = useState('');
-  const [isEditingMobile, setIsEditingMobile] = useState(false);
-  const pollingRef = useRef(null);
-  
   // Profile picture upload states
   const [uploadingPic, setUploadingPic] = useState(false);
   const fileInputRef = useRef(null);
-
-  // Cleanup polling interval on unmount
-  useEffect(() => {
-    return () => {
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current);
-      }
-    };
-  }, []);
 
   useEffect(() => {
     if (user) {
@@ -68,7 +53,6 @@ const Profile = () => {
       });
       setEmailInput(user.email || '');
       setIsEditingEmail(false);
-      setIsEditingMobile(false);
       if (user.syncSettings) {
         setSyncSettings({
           name: user.syncSettings.name !== false,
@@ -149,49 +133,6 @@ const Profile = () => {
     }
   };
 
-  const handleStartTelegramVerification = async () => {
-    setMessage({ type: '', text: '' });
-    setIsVerifyingTelegram(true);
-    try {
-      const data = await api.auth.getTelegramUrl();
-      setTelegramUrl(data.url);
-      window.open(data.url, '_blank');
-
-      if (pollingRef.current) clearInterval(pollingRef.current);
-      
-      pollingRef.current = setInterval(async () => {
-        try {
-          const status = await api.auth.getTelegramStatus();
-          if (status.verified) {
-            clearInterval(pollingRef.current);
-            pollingRef.current = null;
-            setIsVerifyingTelegram(false);
-            await reloadUser();
-            setMessage({ type: 'success', text: `Mobile number verified successfully: ${status.mobileNumber}` });
-          }
-        } catch (err) {
-          console.error('Error polling Telegram verification status:', err);
-        }
-      }, 3000);
-    } catch (err) {
-      console.error(err);
-      setMessage({ type: 'error', text: err.message || 'Failed to start Telegram verification.' });
-      setIsVerifyingTelegram(false);
-    }
-  };
-
-  const handleCancelTelegramVerification = () => {
-    if (pollingRef.current) {
-      clearInterval(pollingRef.current);
-      pollingRef.current = null;
-    }
-    setIsVerifyingTelegram(false);
-    setIsEditingMobile(false);
-    setFormData(prev => ({
-      ...prev,
-      mobileNumber: user?.profile?.mobileNumber || ''
-    }));
-  };
 
   const handleFileChange = async (e) => {
     const file = e.target.files[0];
@@ -235,15 +176,14 @@ const Profile = () => {
     // Clean social links
     const cleanedSocialLinks = formData.socialLinks.filter(link => link.trim() !== '');
 
-    // Prevent saving unverified mobile number changes
-    const isMobileNumberChanged = user && formData.mobileNumber !== (user.profile?.mobileNumber || '');
-    if (isMobileNumberChanged) {
-      setMessage({ 
-        type: 'error', 
-        text: 'You have unverified mobile number changes. Please click "Verify via Telegram" and complete verification before saving.' 
-      });
-      setLoading(false);
-      return;
+    // Validate DOB is not in the future
+    if (formData.dob) {
+      const selectedDob = new Date(formData.dob);
+      if (selectedDob > new Date()) {
+        setMessage({ type: 'error', text: 'Date of birth cannot be in the future.' });
+        setLoading(false);
+        return;
+      }
     }
 
     try {
@@ -326,6 +266,7 @@ const Profile = () => {
                     name="dob"
                     value={formData.dob}
                     onChange={handleChange}
+                    max={new Date().toISOString().split('T')[0]}
                     className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/50 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-100 focus:outline-none transition"
                   />
                 </div>
@@ -434,102 +375,18 @@ const Profile = () => {
 
               {/* Mobile Number */}
               <div className="space-y-1.5 md:col-span-2">
-                <div className="flex items-center space-x-2">
-                  <label className="text-xs font-semibold text-slate-400">Mobile Number</label>
-                  {user?.mobileVerified ? (
-                    <span className="text-[9px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full font-bold flex items-center space-x-1">
-                      <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></span>
-                      <span>Verified</span>
-                    </span>
-                  ) : (
-                    <span className="text-[9px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full font-bold flex items-center space-x-1">
-                      <span className="w-1.5 h-1.5 bg-amber-400 rounded-full"></span>
-                      <span>Unverified</span>
-                    </span>
-                  )}
+                <label className="text-xs font-semibold text-slate-400">Mobile Number</label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-500"><Phone size={16} /></span>
+                  <input
+                    type="tel"
+                    name="mobileNumber"
+                    value={formData.mobileNumber}
+                    onChange={handleChange}
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/50 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-100 placeholder-slate-650 focus:outline-none transition"
+                    placeholder="e.g. +919876543210"
+                  />
                 </div>
-                <div className="flex space-x-2">
-                  <div className="relative flex-1">
-                    <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-500"><Phone size={16} /></span>
-                    <input
-                      type="tel"
-                      name="mobileNumber"
-                      value={formData.mobileNumber}
-                      onChange={handleChange}
-                      disabled={!isEditingMobile || isVerifyingTelegram}
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/50 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-100 placeholder-slate-650 focus:outline-none transition disabled:opacity-70 disabled:cursor-not-allowed"
-                      placeholder="e.g. +919876543210"
-                    />
-                  </div>
-                  {!isEditingMobile && !isVerifyingTelegram ? (
-                    <button
-                      type="button"
-                      onClick={() => setIsEditingMobile(true)}
-                      className="bg-slate-950 border border-slate-800 hover:bg-slate-850 text-emerald-400 font-semibold text-xs px-4 py-2.5 rounded-xl transition cursor-pointer"
-                    >
-                      Edit Number
-                    </button>
-                  ) : isEditingMobile && !isVerifyingTelegram ? (
-                    <div className="flex space-x-2">
-                      {formData.mobileNumber !== (user.profile?.mobileNumber || '') && (
-                        <button
-                          type="button"
-                          onClick={handleStartTelegramVerification}
-                          className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs px-4 py-2.5 rounded-xl transition cursor-pointer"
-                        >
-                          Verify via Telegram
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsEditingMobile(false);
-                          setFormData(prev => ({
-                            ...prev,
-                            mobileNumber: user.profile?.mobileNumber || ''
-                          }));
-                        }}
-                        className="bg-slate-950 border border-slate-800 hover:bg-slate-850 text-slate-400 font-semibold text-xs px-3 py-2.5 rounded-xl transition cursor-pointer"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  ) : null}
-                </div>
-                {isEditingMobile && formData.mobileNumber !== (user.profile?.mobileNumber || '') && !isVerifyingTelegram && (
-                  <p className="text-[10px] text-amber-400">
-                    ⚠️ Phone number changed. Click "Verify via Telegram" to launch verification.
-                  </p>
-                )}
-                
-                {isVerifyingTelegram && (
-                  <div className="p-4 bg-slate-950/80 border border-slate-850 rounded-xl space-y-3 mt-2 animate-pulse">
-                    <div className="flex items-center space-x-2.5">
-                      <RefreshCw size={16} className="animate-spin text-emerald-400" />
-                      <span className="text-xs font-semibold text-slate-200">Waiting for Telegram Verification...</span>
-                    </div>
-                    <p className="text-[10px] text-slate-400 leading-normal">
-                      We opened Telegram in a new tab. Send <b>/start</b> to the bot and click <b>Share Phone Number</b>.
-                    </p>
-                    <div className="flex space-x-2 pt-1">
-                      <a
-                        href={telegramUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold px-3.5 py-1.5 rounded-lg transition"
-                      >
-                        Open Telegram Again
-                      </a>
-                      <button
-                        type="button"
-                        onClick={handleCancelTelegramVerification}
-                        className="bg-slate-900 border border-slate-850 hover:bg-slate-800 text-slate-400 text-[10px] font-bold px-3 py-1.5 rounded-lg transition cursor-pointer"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                )}
               </div>
 
               {/* Profile Picture Upload & URL */}
@@ -684,7 +541,7 @@ const Profile = () => {
                 { field: 'dob', label: 'Sync Date of Birth' },
                 { field: 'bloodGroup', label: 'Sync Blood Group' },
                 { field: 'gotram', label: 'Sync Gotram' },
-                { field: 'mobileNumber', label: 'Sync Mobile Number', requiresVerification: true, verified: user?.mobileVerified },
+                { field: 'mobileNumber', label: 'Sync Mobile Number' },
                 { field: 'email', label: 'Sync Login Email', requiresVerification: true, verified: user?.emailVerified },
                 { field: 'profilePictureUrl', label: 'Sync Profile Photo' },
                 { field: 'socialLinks', label: 'Sync Social Links' }

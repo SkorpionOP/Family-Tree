@@ -126,20 +126,7 @@ export const api = {
       });
       return handleResponse(res);
     },
-    getTelegramUrl: async () => {
-      const res = await apiFetch(`/auth/telegram-url`, {
-        method: 'GET',
-        headers: getHeaders(),
-      });
-      return handleResponse(res);
-    },
-    getTelegramStatus: async () => {
-      const res = await apiFetch(`/auth/telegram-status`, {
-        method: 'GET',
-        headers: getHeaders(),
-      });
-      return handleResponse(res);
-    },
+
     uploadProfilePicture: async (file) => {
       const formData = new FormData();
       formData.append('image', file);

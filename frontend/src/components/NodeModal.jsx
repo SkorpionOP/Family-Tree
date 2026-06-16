@@ -297,6 +297,18 @@ const NodeModal = ({
     setError('');
 
     try {
+      // Validate dates
+      if (formData.dob && new Date(formData.dob) > new Date()) {
+        throw new Error('Date of birth cannot be in the future.');
+      }
+      if (formData.isDeceased && formData.dateOfDeath) {
+        if (new Date(formData.dateOfDeath) > new Date()) {
+          throw new Error('Date of death cannot be in the future.');
+        }
+        if (formData.dob && new Date(formData.dateOfDeath) < new Date(formData.dob)) {
+          throw new Error('Date of death cannot be before date of birth.');
+        }
+      }
       if (mode === 'link_user') {
         if (!formData.linkEmail) {
           throw new Error('User email is required to establish linkage');
@@ -537,6 +549,7 @@ const NodeModal = ({
                         name="dob"
                         value={formData.dob}
                         onChange={handleInputChange}
+                        max={new Date().toISOString().split('T')[0]}
                         className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-200 rounded-xl pl-9 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
                       />
                     </div>

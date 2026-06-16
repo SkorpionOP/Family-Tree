@@ -169,6 +169,12 @@ const updateProfile = async (req, res) => {
     }
 
     if (profile) {
+      if (profile.dob) {
+        const selectedDob = new Date(profile.dob);
+        if (selectedDob > new Date()) {
+          return res.status(400).json({ message: 'Date of birth cannot be in the future.' });
+        }
+      }
       user.profile = {
         ...user.profile,
         name: profile.name !== undefined ? profile.name : user.profile.name,
@@ -179,6 +185,9 @@ const updateProfile = async (req, res) => {
         profilePictureUrl: profile.profilePictureUrl !== undefined ? profile.profilePictureUrl : user.profile.profilePictureUrl,
         socialLinks: profile.socialLinks !== undefined ? profile.socialLinks : user.profile.socialLinks
       };
+      if (profile.mobileNumber !== undefined) {
+        user.mobileVerified = true;
+      }
     }
 
     if (syncSettings) {
@@ -391,176 +400,7 @@ const firebaseLogin = async (req, res) => {
   }
 };
 
-// --- Telegram Verification Helpers ---
 
-const sendTelegramMessage = async (token, chatId, text) => {
-  try {
-    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: text
-      })
-    });
-  } catch (err) {
-    console.error('Failed to send Telegram message:', err);
-  }
-};
-
-const requestContact = async (token, chatId, text) => {
-  try {
-    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: text,
-        reply_markup: {
-          keyboard: [[
-            {
-              text: '📱 Share Phone Number',
-              request_contact: true
-            }
-          ]],
-          one_time_keyboard: true,
-          resize_keyboard: true
-        }
-      })
-    });
-  } catch (err) {
-    console.error('Failed to request contact:', err);
-  }
-};
-
-const removeKeyboard = async (token, chatId, text) => {
-  try {
-    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: text,
-        reply_markup: {
-          remove_keyboard: true
-        }
-      })
-    });
-  } catch (err) {
-    console.error('Failed to remove keyboard:', err);
-  }
-};
-
-// --- Telegram Verification Controllers ---
-
-const getTelegramVerificationUrl = async (req, res) => {
-  const crypto = require('crypto');
-  try {
-    const user = await User.findById(req.user.id);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    const token = 'tg_' + crypto.randomBytes(16).toString('hex');
-    user.telegramVerificationCode = token;
-    await user.save();
-
-    const botUsername = process.env.TELEGRAM_BOT_USERNAME || 'KinshipTreeVerifyBot';
-    const url = `https://t.me/${botUsername}?start=${token}`;
-
-    res.json({ url });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-const getTelegramVerificationStatus = async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    // Auto-migrate: if user has a mobile number but mobileVerified is false, set it to true
-    if (user.profile.mobileNumber && !user.mobileVerified) {
-      user.mobileVerified = true;
-      await user.save();
-    }
-
-    res.json({ verified: user.mobileVerified, mobileNumber: user.profile.mobileNumber });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-const handleTelegramWebhook = async (req, res) => {
-  res.sendStatus(200);
-
-  const { message } = req.body;
-  if (!message) return;
-
-  const botToken = process.env.TELEGRAM_BOT_TOKEN;
-  if (!botToken) return;
-
-  const chatId = message.chat.id;
-
-  try {
-    if (message.text && message.text.startsWith('/start')) {
-      const parts = message.text.split(' ');
-      const token = parts[1];
-
-      if (!token || !token.startsWith('tg_')) {
-        await sendTelegramMessage(botToken, chatId, '⚠️ Invalid verification link. Please click the verify button in the app again.');
-        return;
-      }
-
-      const user = await User.findOne({ telegramVerificationCode: token });
-      if (!user) {
-        await sendTelegramMessage(botToken, chatId, '⚠️ Verification session expired or invalid. Please try again from the website.');
-        return;
-      }
-
-      user.telegramChatId = chatId.toString();
-      await user.save();
-
-      await requestContact(botToken, chatId, '👋 Welcome! To verify your mobile number for Dravidian Kinship, please click the button below to share your phone contact.');
-      return;
-    }
-
-    if (message.contact) {
-      const { phone_number, user_id } = message.contact;
-
-      if (message.from.id !== user_id) {
-        await sendTelegramMessage(botToken, chatId, '⚠️ You must share your own contact to verify your number.');
-        return;
-      }
-
-      const user = await User.findOne({ telegramChatId: chatId.toString() });
-      if (!user || !user.telegramVerificationCode) {
-        await sendTelegramMessage(botToken, chatId, '⚠️ Verification session not found or already completed.');
-        return;
-      }
-
-      let formattedPhone = phone_number;
-      if (!formattedPhone.startsWith('+')) {
-        formattedPhone = '+' + formattedPhone;
-      }
-
-      user.profile.mobileNumber = formattedPhone;
-      user.mobileVerified = true;
-      user.telegramVerificationCode = '';
-      user.telegramChatId = '';
-      await user.save();
-
-      await syncUserToNodes(user._id);
-
-      await removeKeyboard(botToken, chatId, '✅ Mobile number verified and updated successfully! You can return to the app now.');
-      return;
-    }
-  } catch (err) {
-    console.error('Telegram webhook error:', err);
-  }
-};
 
 const uploadProfilePicture = async (req, res) => {
   try {
@@ -593,8 +433,5 @@ module.exports = {
   googleLogin,
   firebaseLogin,
   syncUserToNodes,
-  getTelegramVerificationUrl,
-  getTelegramVerificationStatus,
-  handleTelegramWebhook,
   uploadProfilePicture
 };
