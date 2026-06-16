@@ -14,7 +14,6 @@ import {
   RecaptchaVerifier,
   verifyBeforeUpdateEmail
 } from "firebase/auth";
-import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "firebase/app-check";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -30,14 +29,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
-
-// Initialize App Check with reCAPTCHA Enterprise site key
-if (typeof window !== "undefined") {
-  initializeAppCheck(app, {
-    provider: new ReCaptchaEnterpriseProvider('-Ae0iMNds0d9NlwYWI_H4bCBtE-yQcNAPKhEYCARoQu4TVQz-7oFt_7H6Ldoto5J_pIL-XBDjFGobcowchDDlu615sXPvgY2_bc5oHSNE8KyngRuX8G5kA0VZmkU5z8wstwcRofzdAmB8h455jCPsUIOl1A'),
-    isTokenAutoRefreshEnabled: true
-  });
-}
 
 export { 
   signInWithPopup, 
